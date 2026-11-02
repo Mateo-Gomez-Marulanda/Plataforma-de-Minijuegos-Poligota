@@ -119,11 +119,13 @@ a:focus-visible {
 
 .boton {
   display: inline-block;
+  background: transparent; /* también se usa en <button> */
+  font: 600 1.0625rem var(--fuente-texto);
+  cursor: pointer;
   padding: 0.85rem 1.4rem;
   border: 2px solid var(--papel);
   border-radius: 0.5rem;
   color: var(--papel);
-  font-weight: 600;
   text-decoration: none;
   transition: background-color 0.15s, color 0.15s, transform 0.15s;
 }
@@ -191,7 +193,12 @@ a:focus-visible {
   list-style: none;
 }
 
+.lista-juegos > li {
+  display: flex;
+}
+
 .juego {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -263,7 +270,146 @@ a:focus-visible {
   font-weight: 600;
 }
 
+.juego--activo {
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.juego--activo:hover {
+  transform: translateY(-4px);
+}
+
+/* ---------- Sudoku ---------- */
+
+.sudoku {
+  display: grid;
+  grid-template-columns: minmax(0, 36rem) minmax(13rem, 18rem);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.sudoku__tablero {
+  /* Cuadrado que cabe en pantalla: ancho máximo 36rem, o menos si la ventana es baja */
+  width: min(100%, 36rem, max(20rem, calc(100vh - 17rem)));
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  aspect-ratio: 1;
+  border: 3px solid var(--tinta);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--papel);
+}
+
+.celda {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #c9c6ba;
+  border-bottom: 1px solid #c9c6ba;
+  background: var(--papel);
+  color: var(--superficie);
+  font: 600 clamp(1rem, 4.2vw, 1.8rem) var(--fuente-texto);
+  cursor: pointer;
+}
+
+/* Líneas gruesas entre bloques de 3x3 */
+.celda--corte-v { border-right: 3px solid var(--tinta); }
+.celda--corte-h { border-bottom: 3px solid var(--tinta); }
+
+.celda--pista {
+  color: var(--tinta);
+  font-weight: 700;
+  background: #e6e3d9;
+}
+
+.celda--igual { background: #ffeaa0; }
+.celda--elegida { background: var(--amarillo); }
+.celda--conflicto { color: #b3261e; background: #fbd5cf; }
+.celda--conflicto.celda--elegida { background: #f6a79b; }
+
+.celda:focus-visible {
+  outline: 3px solid var(--violeta);
+  outline-offset: -3px;
+}
+
+.sudoku__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.sudoku__grupo {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.opcion {
+  flex: 1;
+  padding: 0.55rem 0.4rem;
+  border: 2px solid var(--papel-tenue);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--papel);
+  font: 600 0.95rem var(--fuente-texto);
+  cursor: pointer;
+}
+
+.opcion[aria-pressed='true'] {
+  background: var(--papel);
+  border-color: var(--papel);
+  color: var(--tablero);
+}
+
+.sudoku__teclado {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.tecla {
+  padding: 0.8rem 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: var(--superficie);
+  color: var(--papel);
+  font: 600 1.3rem var(--fuente-texto);
+  cursor: pointer;
+}
+
+.tecla:hover:not(:disabled) { background: var(--violeta); color: var(--tinta); }
+.tecla:disabled { opacity: 0.4; cursor: default; }
+.tecla--borrar { grid-column: 1 / -1; font-size: 1rem; }
+
+.sudoku__datos,
+.sudoku__victoria,
+.sudoku__error {
+  margin: 0;
+}
+
+.sudoku__victoria {
+  padding: 0.8rem 1rem;
+  border-radius: 0.4rem;
+  background: var(--verde);
+  color: var(--tinta);
+  font-weight: 700;
+}
+
+.sudoku__error { color: #ffb4a8; }
+
+.sudoku__aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+@media (max-width: 52rem) {
+  .sudoku { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .juego--activo { transition: none; }
   .fichas--cae .ficha { animation: none; }
   .boton { transition: none; }
 }

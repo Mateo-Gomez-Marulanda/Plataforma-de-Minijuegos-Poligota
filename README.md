@@ -8,17 +8,20 @@ Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos
 
 La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
 
-**Opción A: solo la web (la más rápida, sin Docker)**
+**Opción A: web local + backend en Docker (para jugar Sudoku)**
 
-Requiere Node.js 22 o superior. Hoy la web solo muestra el inicio, los minijuegos y los créditos, y todavía no se conecta a ningún juego, así que con esto basta:
+Requiere Node.js 22 o superior. El Sudoku necesita el servicio y el gateway; levántalos con Docker y la web con Vite:
 
 ```sh
+docker compose up -d --build --no-deps gateway sudoku-service
 cd frontend
 npm install
 npm run dev
 ```
 
-**Opción B: con Docker**
+Sin el backend la web también abre, pero el Sudoku muestra "No se pudo conectar con el servidor" con un botón para reintentar. Inicio, créditos y la lista de minijuegos funcionan sin él.
+
+**Opción B: todo en Docker**
 
 Levanta la web, el gateway y los servicios que ya están implementados (Sudoku y Snake):
 
@@ -41,7 +44,7 @@ docker compose down              # detener
 
 ## Estado
 
-Listos: estructura, Docker, gateway, servicio Sudoku, servicio Snake y frontend base (inicio, minijuegos y créditos; los juegos aún no se conectan). Pendiente: Buscaminas, Tetris y los componentes de juego; sus Dockerfiles son provisionales (`sleep infinity`).
+Listos: estructura, Docker, gateway, servicios Sudoku y Snake, y frontend (inicio, minijuegos, créditos y Sudoku jugable). Pendiente: pantalla de Snake, Buscaminas y Tetris; los Dockerfiles de Buscaminas y Tetris son provisionales (`sleep infinity`).
 
 ## Desarrollo local del Sudoku
 
