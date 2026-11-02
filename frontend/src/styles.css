@@ -446,7 +446,8 @@ a:focus-visible {
 .snake__error { color: #ffb4a8; }
 
 .sudoku__aviso,
-.snake__aviso {
+.snake__aviso,
+.buscaminas__aviso {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -502,6 +503,105 @@ a:focus-visible {
 @media (pointer: coarse) {
   .snake__cruceta { display: grid; }
 }
+
+/* ---------- Buscaminas ---------- */
+
+.buscaminas {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.buscaminas > p {
+  margin: 0;
+}
+
+.buscaminas__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.buscaminas__barra .sudoku__grupo {
+  min-width: 18rem;
+}
+
+.buscaminas__contador {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.buscaminas__contador strong {
+  min-width: 3ch;
+  font-family: var(--fuente-titulo);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.buscaminas__modo {
+  flex: none;
+  padding-inline: 1rem;
+}
+
+.buscaminas__ayuda {
+  color: var(--papel-tenue);
+  font-size: 0.95rem;
+}
+
+/* El ancho del tablero depende de las columnas; cada casilla es un cuadrado de hasta --lado (lo fija el componente) */
+.buscaminas__tablero {
+  width: min(100%, calc(var(--columnas) * var(--lado)));
+  display: grid;
+  grid-template-columns: repeat(var(--columnas), 1fr);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 0.5rem;
+  background: var(--tinta);
+  container-type: inline-size;
+}
+
+.casilla {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.2rem;
+  font: 700 1rem var(--fuente-texto);
+  /* El número escala con el tamaño real de la casilla */
+  font-size: calc(100cqw / var(--columnas) * 0.55);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.casilla--oculta,
+.casilla--bandera { background: var(--superficie); color: var(--coral); }
+.casilla--oculta:hover:not(:disabled) { background: #3a4891; }
+.casilla--bandera { background: #3a4891; }
+
+.casilla--vacia,
+.casilla--numero { background: var(--papel); cursor: default; }
+
+.casilla--mina { background: #c9c6ba; color: var(--tinta); }
+.casilla--explotada { background: var(--coral); color: var(--tinta); }
+.casilla--erronea { background: var(--superficie); color: var(--coral); }
+
+.casilla:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: -3px;
+}
+
+/* Colores de los números (contrastan con el fondo claro) */
+.casilla[data-n='1'] { color: #1f4fd0; }
+.casilla[data-n='2'] { color: #1b7a43; }
+.casilla[data-n='3'] { color: #c62828; }
+.casilla[data-n='4'] { color: #5b2aa8; }
+.casilla[data-n='5'] { color: #8a2d12; }
+.casilla[data-n='6'] { color: #0e7c86; }
+.casilla[data-n='7'] { color: var(--tinta); }
+.casilla[data-n='8'] { color: #555; }
 
 @media (max-width: 52rem) {
   .sudoku,

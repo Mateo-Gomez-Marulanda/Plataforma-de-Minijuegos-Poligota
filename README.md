@@ -44,7 +44,7 @@ docker compose down              # detener
 
 ## Estado
 
-Listos: estructura, Docker, gateway, servicios Sudoku, Snake y Buscaminas, y frontend (inicio, minijuegos, créditos, Sudoku y Snake jugables). Pendiente: pantalla de Buscaminas, y Tetris; el Dockerfile de Tetris es provisional (`sleep infinity`).
+Listos: estructura, Docker, gateway, servicios Sudoku, Snake y Buscaminas, y frontend (inicio, minijuegos, créditos, y Sudoku, Snake y Buscaminas jugables). Pendiente: Tetris; su Dockerfile es provisional (`sleep infinity`).
 
 ## Desarrollo local del Sudoku
 
