@@ -52,35 +52,42 @@ after(() => {
 // Construye la URL del gateway de prueba.
 const url = (p) => `http://127.0.0.1:${gwPort}${p}`;
 
+// GET /health responde ok.
 test('health', async () => {
   assert.deepEqual(await (await fetch(url('/health'))).json(), { status: 'ok' });
 });
 
+// El prefijo /api/... se elimina y se conservan método y cuerpo.
 test('REST: quita el prefijo y reenvía método y cuerpo', async () => {
   const r = await fetch(url('/api/sudoku/games/abc/move'), { method: 'POST', body: '{"x":1}' });
   assert.deepEqual(await r.json(), { method: 'POST', url: '/games/abc/move', body: '{"x":1}' });
 });
 
+// El prefijo solo, con query string, llega al servicio como "/".
 test('REST: ruta raíz del prefijo con query', async () => {
   const j = await (await fetch(url('/api/sudoku?a=1'))).json();
   assert.equal(j.url, '/?a=1');
 });
 
+// Las respuestas incluyen la cabecera CORS.
 test('CORS habilitado', async () => {
   const r = await fetch(url('/health'), { headers: { Origin: 'http://localhost:5173' } });
   assert.equal(r.headers.get('access-control-allow-origin'), '*');
 });
 
+// Si el servicio no responde, el gateway devuelve 502 en JSON.
 test('servicio caído -> 502 JSON', async () => {
   const r = await fetch(url('/api/caido/x'));
   assert.equal(r.status, 502);
   assert.equal((await r.json()).error, 'BAD_GATEWAY');
 });
 
+// Una ruta sin proxy registrado responde 404.
 test('ruta desconocida -> 404', async () => {
   assert.equal((await fetch(url('/nada'))).status, 404);
 });
 
+// El WebSocket se reenvía a /ws del servicio y los mensajes van y vienen.
 test('WebSocket: /ws/snake llega a /ws y es bidireccional', async () => {
   const ws = new WebSocket(`ws://127.0.0.1:${gwPort}/ws/snake`);
   const msgs = [];
@@ -92,6 +99,7 @@ test('WebSocket: /ws/snake llega a /ws y es bidireccional', async () => {
   assert.deepEqual(msgs, ['{"path":"/ws"}', 'eco:hola']);
 });
 
+// Un upgrade a una ruta desconocida se cierra con error.
 test('WebSocket en ruta no registrada se rechaza', async () => {
   const ws = new WebSocket(`ws://127.0.0.1:${gwPort}/ws/otro`);
   const err = await new Promise((r) => ws.once('error', r));

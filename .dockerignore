@@ -1,3 +1,4 @@
+# Archivos que no se copian al contexto de build de Docker (dependencias locales, compilados).
 **/node_modules
 **/.git
 **/__pycache__

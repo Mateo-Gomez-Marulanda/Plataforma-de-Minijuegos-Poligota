@@ -1,0 +1,5 @@
+# Excluye del build de Docker el venv local, caches y pruebas.
+.venv/
+__pycache__/
+.pytest_cache/
+tests/

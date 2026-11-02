@@ -15,4 +15,13 @@ docker compose down              # detener
 
 ## Estado
 
-Estructura y Docker listos. Los Dockerfiles son provisionales (solo `sleep infinity`) hasta implementar cada servicio.
+Listos: estructura, Docker, gateway (`cd gateway && npm test`) y servicio Sudoku (`cd services/sudoku-python && .venv/bin/pytest`). Pendiente: frontend, Buscaminas, Snake y Tetris; sus Dockerfiles son provisionales (`sleep infinity`).
+
+## Desarrollo local del Sudoku
+
+```sh
+cd services/sudoku-python
+python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest
+.venv/bin/uvicorn server.main:app --port 8001
+```

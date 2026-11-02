@@ -1,3 +1,4 @@
+# Archivos que git no debe versionar: dependencias, compilados, caches y secretos.
 node_modules/
 dist/
 __pycache__/

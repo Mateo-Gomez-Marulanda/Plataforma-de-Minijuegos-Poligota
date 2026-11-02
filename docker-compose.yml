@@ -1,3 +1,5 @@
+# Orquesta todo el sistema: frontend y gateway publican puertos; los servicios de juego
+# solo son visibles dentro de la red interna 'minijuegos-net' (se resuelven por nombre).
 services:
   frontend:
     build: ./frontend

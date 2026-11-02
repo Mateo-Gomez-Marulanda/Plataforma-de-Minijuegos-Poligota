@@ -1,0 +1,4 @@
+# Dependencias para desarrollo local del Sudoku: las de ejecución más pytest y httpx (TestClient).
+-r requirements.txt
+pytest>=8
+httpx>=0.27

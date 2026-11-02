@@ -530,7 +530,8 @@ Esta sección resume las reglas que debe seguir cualquier persona o agente de IA
 4. **Escribir código idiomático** para cada lenguaje: aprovechar las características propias (pattern matching en Elixir, records en Java y C\#, comprensiones en Python) en lugar de traducir literalmente el mismo código de un lenguaje a otro.  
 5. **Incluir pruebas unitarias** de la lógica.  
 6. **No exponer información oculta** al cliente (por ejemplo, minas o la solución del sudoku).  
-7. **Cada servicio debe funcionar de forma aislada** con `docker compose up <servicio>`.
+7. **Cada servicio debe funcionar de forma aislada** con `docker compose up <servicio>`.  
+8. **Documentar con comentarios breves**: cada archivo empieza con un comentario que explica qué hace, y cada método o función interna lleva un comentario corto con su propósito. Se prioriza la claridad y la concisión, no la exhaustividad.
 
 ### 8.2 Orden de implementación recomendado
 
