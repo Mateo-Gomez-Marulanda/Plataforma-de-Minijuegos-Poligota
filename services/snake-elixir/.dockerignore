@@ -1,0 +1,4 @@
+# Excluye del build de Docker lo generado localmente y las pruebas.
+deps
+_build
+test
