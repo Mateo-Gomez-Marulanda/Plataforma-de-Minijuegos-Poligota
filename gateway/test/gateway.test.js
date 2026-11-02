@@ -1,0 +1,99 @@
+// Pruebas del gateway contra un servicio falso: reescritura de rutas, CORS,
+// errores (502/404) y proxy de WebSocket.
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { WebSocketServer, WebSocket } from 'ws';
+import { createGateway } from '../src/app.js';
+
+// Arranca un servidor en un puerto libre y devuelve ese puerto.
+const listen = (server) => new Promise((r) => server.listen(0, '127.0.0.1', () => r(server.address().port)));
+
+let upstream, gw, gwPort, wss;
+
+// Levanta un servicio falso y un gateway apuntando a él.
+before(async () => {
+  // Servicio falso: devuelve la ruta que recibió; WebSocket que hace eco con la ruta.
+  upstream = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ method: req.method, url: req.url, body }));
+    });
+  });
+  wss = new WebSocketServer({ server: upstream });
+  wss.on('connection', (ws, req) => {
+    ws.send(JSON.stringify({ path: req.url }));
+    ws.on('message', (m) => ws.send(`eco:${m}`));
+  });
+  const up = await listen(upstream);
+  const t = `http://127.0.0.1:${up}`;
+
+  const { app, attachUpgrade } = createGateway([
+    { prefix: '/api/sudoku', target: t, rewrite: '' },
+    { prefix: '/ws/snake', target: t, rewrite: '/ws', ws: true },
+    { prefix: '/api/caido', target: 'http://127.0.0.1:1', rewrite: '' },
+  ]);
+  gw = http.createServer(app);
+  attachUpgrade(gw);
+  gwPort = await listen(gw);
+});
+
+// Cierra servidores y conexiones abiertas.
+after(() => {
+  wss.close();
+  upstream.close();
+  gw.close();
+  gw.closeAllConnections();
+  upstream.closeAllConnections();
+});
+
+// Construye la URL del gateway de prueba.
+const url = (p) => `http://127.0.0.1:${gwPort}${p}`;
+
+test('health', async () => {
+  assert.deepEqual(await (await fetch(url('/health'))).json(), { status: 'ok' });
+});
+
+test('REST: quita el prefijo y reenvía método y cuerpo', async () => {
+  const r = await fetch(url('/api/sudoku/games/abc/move'), { method: 'POST', body: '{"x":1}' });
+  assert.deepEqual(await r.json(), { method: 'POST', url: '/games/abc/move', body: '{"x":1}' });
+});
+
+test('REST: ruta raíz del prefijo con query', async () => {
+  const j = await (await fetch(url('/api/sudoku?a=1'))).json();
+  assert.equal(j.url, '/?a=1');
+});
+
+test('CORS habilitado', async () => {
+  const r = await fetch(url('/health'), { headers: { Origin: 'http://localhost:5173' } });
+  assert.equal(r.headers.get('access-control-allow-origin'), '*');
+});
+
+test('servicio caído -> 502 JSON', async () => {
+  const r = await fetch(url('/api/caido/x'));
+  assert.equal(r.status, 502);
+  assert.equal((await r.json()).error, 'BAD_GATEWAY');
+});
+
+test('ruta desconocida -> 404', async () => {
+  assert.equal((await fetch(url('/nada'))).status, 404);
+});
+
+test('WebSocket: /ws/snake llega a /ws y es bidireccional', async () => {
+  const ws = new WebSocket(`ws://127.0.0.1:${gwPort}/ws/snake`);
+  const msgs = [];
+  ws.on('message', (m) => msgs.push(m.toString()));
+  await new Promise((r) => ws.once('open', r));
+  ws.send('hola');
+  await new Promise((r) => setTimeout(r, 150));
+  ws.close();
+  assert.deepEqual(msgs, ['{"path":"/ws"}', 'eco:hola']);
+});
+
+test('WebSocket en ruta no registrada se rechaza', async () => {
+  const ws = new WebSocket(`ws://127.0.0.1:${gwPort}/ws/otro`);
+  const err = await new Promise((r) => ws.once('error', r));
+  assert.ok(err);
+});

@@ -1,4 +1,9 @@
-# PROVISIONAL: se reemplaza al implementar el servicio.
+# Instala dependencias de producción y ejecuta el gateway en el puerto 3000.
 FROM node:22-alpine
 WORKDIR /app
-CMD ["sleep", "infinity"]
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY src ./src
+ENV NODE_ENV=production
+EXPOSE 3000
+CMD ["node", "src/server.js"]
