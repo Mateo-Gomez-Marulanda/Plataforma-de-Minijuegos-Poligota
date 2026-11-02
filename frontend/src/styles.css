@@ -281,7 +281,8 @@ a:focus-visible {
 
 /* ---------- Sudoku ---------- */
 
-.sudoku {
+.sudoku,
+.snake {
   display: grid;
   grid-template-columns: minmax(0, 36rem) minmax(13rem, 18rem);
   gap: 2.5rem;
@@ -333,7 +334,8 @@ a:focus-visible {
   outline-offset: -3px;
 }
 
-.sudoku__panel {
+.sudoku__panel,
+.snake__panel {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
@@ -383,11 +385,14 @@ a:focus-visible {
 
 .sudoku__datos,
 .sudoku__victoria,
-.sudoku__error {
+.sudoku__error,
+.snake__panel p {
   margin: 0;
 }
 
-.sudoku__victoria {
+.sudoku__victoria,
+.snake__victoria,
+.snake__derrota {
   padding: 0.8rem 1rem;
   border-radius: 0.4rem;
   background: var(--verde);
@@ -395,17 +400,72 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.sudoku__error { color: #ffb4a8; }
+.snake__derrota { background: var(--coral); }
 
-.sudoku__aviso {
+.sudoku__error,
+.snake__error { color: #ffb4a8; }
+
+.sudoku__aviso,
+.snake__aviso {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1rem;
 }
 
+/* ---------- Snake ---------- */
+
+.snake__tablero {
+  width: min(100%, 36rem, max(20rem, calc(100vh - 17rem)));
+  display: grid;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 3px;
+  border-radius: 0.5rem;
+  background: var(--tinta);
+}
+
+.pieza {
+  border-radius: 0.2rem;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.pieza--cuerpo { background: var(--violeta); }
+.pieza--cabeza { background: #d9c2f7; }
+.pieza--comida { background: var(--coral); border-radius: 50%; }
+
+.snake__puntaje {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.snake__puntaje strong {
+  font-family: var(--fuente-titulo);
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+/* Cruceta táctil: solo en pantallas sin puntero preciso */
+.snake__cruceta {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-width: 14rem;
+}
+
+.snake__cruceta-up { grid-column: 2; grid-row: 1; }
+.snake__cruceta-left { grid-column: 1; grid-row: 2; }
+.snake__cruceta-right { grid-column: 3; grid-row: 2; }
+.snake__cruceta-down { grid-column: 2; grid-row: 2; }
+
+@media (pointer: coarse) {
+  .snake__cruceta { display: grid; }
+}
+
 @media (max-width: 52rem) {
-  .sudoku { grid-template-columns: 1fr; }
+  .sudoku,
+  .snake { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

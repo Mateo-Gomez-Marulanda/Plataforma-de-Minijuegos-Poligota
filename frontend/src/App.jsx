@@ -4,6 +4,7 @@ import Inicio from './pages/Inicio.jsx';
 import Juegos from './pages/Juegos.jsx';
 import Creditos from './pages/Creditos.jsx';
 import JuegoSudoku from './pages/JuegoSudoku.jsx';
+import JuegoSnake from './pages/JuegoSnake.jsx';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Route path="/" element={<Inicio />} />
       <Route path="/juegos" element={<Juegos />} />
       <Route path="/juegos/sudoku" element={<JuegoSudoku />} />
+      <Route path="/juegos/snake" element={<JuegoSnake />} />
       <Route path="/creditos" element={<Creditos />} />
       <Route path="*" element={<Inicio />} />
     </Routes>

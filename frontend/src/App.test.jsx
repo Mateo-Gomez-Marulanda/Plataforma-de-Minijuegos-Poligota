@@ -50,9 +50,10 @@ test('una ruta desconocida lleva al inicio', () => {
   expect(screen.getByRole('link', { name: 'Ir a los minijuegos' })).toBeTruthy();
 });
 
-test('en Minijuegos solo Sudoku es un enlace jugable', () => {
+test('en Minijuegos solo Sudoku y Snake son enlaces jugables', () => {
   en('/juegos');
   expect(screen.getByRole('link', { name: /Sudoku/ }).getAttribute('href')).toBe('/juegos/sudoku');
-  expect(screen.queryByRole('link', { name: /Snake/ })).toBeNull();
-  expect(screen.getAllByText('Disponible pronto')).toHaveLength(3);
+  expect(screen.getByRole('link', { name: /Snake/ }).getAttribute('href')).toBe('/juegos/snake');
+  expect(screen.queryByRole('link', { name: /Tetris/ })).toBeNull();
+  expect(screen.getAllByText('Disponible pronto')).toHaveLength(2);
 });

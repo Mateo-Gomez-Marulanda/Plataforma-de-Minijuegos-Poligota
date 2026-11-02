@@ -8,6 +8,6 @@ export const AUTOR = 'Mateo Gómez Marulanda';
 export const JUEGOS = [
   { id: 'sudoku', nombre: 'Sudoku', lenguaje: 'Python', color: 'amarillo', ruta: '/juegos/sudoku' },
   { id: 'buscaminas', nombre: 'Buscaminas', lenguaje: 'Java', color: 'coral' },
-  { id: 'snake', nombre: 'Snake', lenguaje: 'Elixir', color: 'violeta' },
+  { id: 'snake', nombre: 'Snake', lenguaje: 'Elixir', color: 'violeta', ruta: '/juegos/snake' },
   { id: 'tetris', nombre: 'Tetris', lenguaje: 'C#', color: 'verde' },
 ];
