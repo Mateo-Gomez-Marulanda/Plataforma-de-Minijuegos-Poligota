@@ -1,0 +1,5 @@
+# Archivos que git no debe versionar: compilados de .NET e IDEs.
+bin/
+obj/
+.vs/
+*.user

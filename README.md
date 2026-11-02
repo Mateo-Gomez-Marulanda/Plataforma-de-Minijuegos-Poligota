@@ -13,7 +13,7 @@ La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
 Requiere Node.js 22 o superior. Cada juego necesita su servicio y el gateway; levántalos con Docker y la web con Vite:
 
 ```sh
-docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service
+docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service tetris-service
 cd frontend
 npm install
 npm run dev
@@ -23,13 +23,13 @@ Sin el backend la web también abre, pero Sudoku y Snake muestran "No se pudo co
 
 **Opción B: todo en Docker**
 
-Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake y Buscaminas):
+Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake, Buscaminas y Tetris):
 
 ```sh
-docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service
+docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service tetris-service
 ```
 
-El gateway queda en http://localhost:3000. Tetris no se incluye porque todavía no está implementado.
+El gateway queda en http://localhost:3000.
 
 Para detener todo, `docker compose down`. Si `docker compose` falla al descargar imágenes con un error de `credentials` o `gpg`, desbloquea gpg o quita `credsStore` de `~/.docker/config.json`.
 
@@ -44,7 +44,7 @@ docker compose down              # detener
 
 ## Estado
 
-Listos: estructura, Docker, gateway, servicios Sudoku, Snake y Buscaminas, y frontend (inicio, minijuegos, créditos, y Sudoku, Snake y Buscaminas jugables). Pendiente: Tetris; su Dockerfile es provisional (`sleep infinity`).
+Listos: estructura, Docker, gateway, los cuatro servicios (Sudoku, Snake, Buscaminas y Tetris) y frontend (inicio, minijuegos, créditos, y Sudoku, Snake y Buscaminas jugables). Pendiente: pantalla de Tetris.
 
 ## Desarrollo local del Sudoku
 
@@ -97,3 +97,23 @@ Sin JDK ni Maven, el servicio se compila y se ejecuta dentro de Docker:
 cd services/buscaminas-java
 docker build -t buscaminas . && docker run --rm -p 8002:8002 buscaminas
 ```
+
+## Desarrollo local de Tetris
+
+Con el SDK de .NET 8 instalado (en Arch: `sudo pacman -S dotnet-sdk-8.0 aspnet-runtime-8.0`):
+
+```sh
+cd services/tetris-csharp
+dotnet test tests/Tetris.Tests
+dotnet run --project src/Tetris        # servicio en http://localhost:8004
+```
+
+Sin .NET 8 (por ejemplo, solo con .NET 10), las pruebas se ejecutan en Docker. El contenedor corre como root, así que se devuelve la propiedad de los archivos al final:
+
+```sh
+cd services/tetris-csharp
+docker run --rm -v "$PWD":/src -w /src mcr.microsoft.com/dotnet/sdk:8.0 \
+  sh -c "dotnet test tests/Tetris.Tests; chown -R $(id -u):$(id -g) /src"
+```
+
+Para jugar no hace falta nada de esto: la imagen del servicio (`docker build -t tetris services/tetris-csharp`) compila dentro de Docker.

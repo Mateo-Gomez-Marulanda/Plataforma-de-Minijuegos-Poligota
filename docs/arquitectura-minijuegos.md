@@ -485,6 +485,18 @@ Piezas de cuatro bloques (*tetrominós*: I, O, T, S, Z, J, L) caen desde la part
 
 **Teclas:** `left`, `right`, `rotate`, `soft_drop`, `hard_drop`
 
+**Formato del `board`** (matriz de 20 filas por 10 columnas de enteros):
+
+| Valor | Significado |
+| :---- | :---- |
+| `0` | Casilla vacía |
+| `1` a `7` | Casilla ocupada por una pieza: I, O, T, S, Z, J, L (la pieza que cae y las ya fijadas) |
+| `8` | Sombra de aterrizaje: dónde caería la pieza actual |
+
+`state.data` incluye `score`, `level`, `lines`, `next` (letra de la pieza siguiente), `paused` e `interval_ms` (milisegundos entre ticks de gravedad). Además del tick, el servidor envía un `state` inmediatamente después de cada tecla. `game_over.data` incluye `score`, `level`, `lines`, `reason` (`top_out`) y `tick`. Si el cliente envía `options.seed` en `start`, las piezas salen en un orden reproducible (se usa en las pruebas).
+
+**Puntaje:** 100, 300, 500 y 800 por 1, 2, 3 y 4 líneas a la vez (multiplicado por el nivel), 1 punto por fila en caída suave y 2 por fila en caída rápida. El nivel sube cada 10 líneas y la gravedad parte de 1 s por fila.
+
 #### Por qué C\#
 
 Tetris es el juego con la lógica más compleja del proyecto: varias piezas con tablas de rotación, reglas de colisión, niveles y puntuación. Esa complejidad se gestiona mejor con un **sistema de tipos fuerte y expresivo**. C\# combina orientación a objetos con elementos funcionales (records inmutables, *pattern matching*, LINQ), y ASP.NET Core ofrece soporte nativo para WebSockets y temporizadores asíncronos.
