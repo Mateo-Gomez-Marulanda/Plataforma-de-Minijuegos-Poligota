@@ -57,3 +57,17 @@ test('en Minijuegos solo Sudoku y Snake son enlaces jugables', () => {
   expect(screen.queryByRole('link', { name: /Tetris/ })).toBeNull();
   expect(screen.getAllByText('Disponible pronto')).toHaveLength(2);
 });
+
+test('Créditos muestra a los dos autores con su imagen debajo del nombre', () => {
+  en('/creditos');
+  const imagenes = screen.getAllByRole('img').map((i) => i.getAttribute('src'));
+  expect(imagenes).toEqual(['/img/gato.png', '/img/ultron.png']);
+  const nombres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+  expect(nombres).toEqual(['Mateo Gómez Marulanda', 'Ultron (Claude Code)']);
+});
+
+test('si falta una imagen de los créditos se muestra un recuadro con la inicial', () => {
+  en('/creditos');
+  fireEvent.error(screen.getAllByRole('img')[1]);
+  expect(screen.getByRole('img', { name: 'Imagen de Ultron (Claude Code)' }).textContent).toBe('U');
+});

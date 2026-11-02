@@ -1,7 +1,11 @@
 // Constantes del sitio: enlace al repositorio, autoría y datos de los juegos.
 export const GITHUB_URL = 'https://github.com/Mateo-Gomez-Marulanda/Plataforma-de-Minijuegos-Poligota';
 
-export const AUTOR = 'Mateo Gómez Marulanda';
+// Autores de los créditos. Las imágenes viven en frontend/public/img/ y se sirven desde /img/.
+export const AUTORES = [
+  { nombre: 'Mateo Gómez Marulanda', imagen: '/img/gato.png' },
+  { nombre: 'Ultron (Claude Code)', imagen: '/img/ultron.png' },
+];
 
 // Cada juego con su lenguaje y su color de ficha (coincide con las variables de styles.css).
 // `ruta` solo existe en los juegos que ya se pueden jugar en la web.

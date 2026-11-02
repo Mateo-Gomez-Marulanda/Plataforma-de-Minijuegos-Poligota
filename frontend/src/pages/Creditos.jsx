@@ -1,13 +1,18 @@
-// Pantalla de créditos: autoría y tecnologías usadas en cada parte del proyecto.
+// Pantalla de créditos: autores (nombre e imagen) y tecnologías usadas en cada parte del proyecto.
+import Autor from '../components/Autor.jsx';
 import Pagina from '../components/Pagina.jsx';
-import { AUTOR, JUEGOS } from '../config.js';
+import { AUTORES, JUEGOS } from '../config.js';
 
 export default function Creditos() {
   return (
     <Pagina titulo="Créditos">
-      <section className="bloque">
-        <h2>Autor</h2>
-        <p>{AUTOR}</p>
+      <section className="bloque bloque--ancho">
+        <h2>Autores</h2>
+        <div className="autores">
+          {AUTORES.map((a) => (
+            <Autor key={a.nombre} {...a} />
+          ))}
+        </div>
       </section>
       <section className="bloque">
         <h2>Tecnologías</h2>

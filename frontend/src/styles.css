@@ -237,8 +237,48 @@ a:focus-visible {
   font-size: 1.2rem;
 }
 
+.bloque--ancho {
+  max-width: none;
+}
+
 .bloque p {
   margin: 0;
+}
+
+/* Autores: nombre arriba, imagen cuadrada debajo */
+.autores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.autor {
+  width: 14rem;
+}
+
+.autor__nombre {
+  margin: 0 0 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.autor__imagen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  background: var(--superficie);
+}
+
+/* Recuadro de relleno cuando falta la imagen */
+.autor__imagen--vacia {
+  display: grid;
+  place-items: center;
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  font-size: 4rem;
+  color: var(--papel-tenue);
 }
 
 .tecnologias {
