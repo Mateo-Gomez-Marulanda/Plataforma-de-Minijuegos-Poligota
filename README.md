@@ -4,6 +4,18 @@ Sudoku (Python), Buscaminas (Java), Snake (Elixir) y Tetris (C#), cada uno como 
 
 Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos.md)
 
+## Documentación
+
+| Documento | De qué trata |
+| :---- | :---- |
+| [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos.md) | Diseño: objetivos, contrato común y reglas del proyecto |
+| [docs/funcionamiento-general.md](docs/funcionamiento-general.md) | Cómo viaja una jugada del navegador a la lógica y comparación de tecnologías |
+| [docs/sudoku-python.md](docs/sudoku-python.md) | Sudoku por dentro: Python, FastAPI y Uvicorn |
+| [docs/buscaminas-java.md](docs/buscaminas-java.md) | Buscaminas por dentro: Java 21 y Spring Boot |
+| [docs/snake-elixir.md](docs/snake-elixir.md) | Snake por dentro: Elixir, OTP, Bandit y Plug |
+| [docs/tetris-csharp.md](docs/tetris-csharp.md) | Tetris por dentro: C#, ASP.NET Core y WebSockets |
+| [docs/frontend-y-gateway.md](docs/frontend-y-gateway.md) | React, Vite y el gateway de Node |
+
 ## Ejecución del programa
 
 La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
