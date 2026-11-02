@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    depends_on: [gateway]
+
+  gateway:
+    build: ./gateway
+    ports: ["3000:3000"]
+    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service]
+
+  sudoku-service:
+    build: ./services/sudoku-python
+    expose: ["8001"]
+
+  buscaminas-service:
+    build: ./services/buscaminas-java
+    expose: ["8002"]
+
+  snake-service:
+    build: ./services/snake-elixir
+    expose: ["8003"]
+
+  tetris-service:
+    build: ./services/tetris-csharp
+    expose: ["8004"]
+
+networks:
+  default:
+    name: minijuegos-net

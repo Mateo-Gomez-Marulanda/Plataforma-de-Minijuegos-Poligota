@@ -1,0 +1,14 @@
+node_modules/
+dist/
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+target/
+build/
+_build/
+deps/
+bin/
+obj/
+.env
+*.log
