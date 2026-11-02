@@ -13,7 +13,7 @@ La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
 Requiere Node.js 22 o superior. Cada juego necesita su servicio y el gateway; levántalos con Docker y la web con Vite:
 
 ```sh
-docker compose up -d --build --no-deps gateway sudoku-service snake-service
+docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service
 cd frontend
 npm install
 npm run dev
@@ -23,13 +23,13 @@ Sin el backend la web también abre, pero Sudoku y Snake muestran "No se pudo co
 
 **Opción B: todo en Docker**
 
-Levanta la web, el gateway y los servicios que ya están implementados (Sudoku y Snake):
+Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake y Buscaminas):
 
 ```sh
-docker compose up --build --no-deps frontend gateway sudoku-service snake-service
+docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service
 ```
 
-El gateway queda en http://localhost:3000. Buscaminas y Tetris no se incluyen porque todavía no están implementados.
+El gateway queda en http://localhost:3000. Tetris no se incluye porque todavía no está implementado.
 
 Para detener todo, `docker compose down`. Si `docker compose` falla al descargar imágenes con un error de `credentials` o `gpg`, desbloquea gpg o quita `credsStore` de `~/.docker/config.json`.
 
@@ -44,7 +44,7 @@ docker compose down              # detener
 
 ## Estado
 
-Listos: estructura, Docker, gateway, servicios Sudoku y Snake, y frontend (inicio, minijuegos, créditos, Sudoku y Snake jugables). Pendiente: Buscaminas y Tetris; sus Dockerfiles son provisionales (`sleep infinity`).
+Listos: estructura, Docker, gateway, servicios Sudoku, Snake y Buscaminas, y frontend (inicio, minijuegos, créditos, Sudoku y Snake jugables). Pendiente: pantalla de Buscaminas, y Tetris; el Dockerfile de Tetris es provisional (`sleep infinity`).
 
 ## Desarrollo local del Sudoku
 
@@ -79,4 +79,21 @@ cd frontend
 npm install
 npm run dev     # http://localhost:5173
 npm test
+```
+
+## Desarrollo local de Buscaminas
+
+Con JDK 21 o superior y Maven instalados:
+
+```sh
+cd services/buscaminas-java
+mvn test                 # pruebas
+mvn spring-boot:run      # servicio en http://localhost:8002
+```
+
+Sin JDK ni Maven, el servicio se compila y se ejecuta dentro de Docker:
+
+```sh
+cd services/buscaminas-java
+docker build -t buscaminas . && docker run --rm -p 8002:8002 buscaminas
 ```

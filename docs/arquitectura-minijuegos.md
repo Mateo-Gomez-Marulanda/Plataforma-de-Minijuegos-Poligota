@@ -377,7 +377,21 @@ Tablero rectangular con minas ocultas. El jugador destapa casillas: si es una mi
 
 **Opciones de partida:** `{ "rows": 16, "cols": 16, "mines": 40 }`
 
-> **Importante:** la respuesta al cliente **nunca** debe incluir la posición de las minas no destapadas. El `board` enviado solo contiene lo que el jugador puede ver (casilla oculta, bandera o número).
+> **Importante:** mientras la partida está en curso, la respuesta al cliente **nunca** incluye la posición de las minas no destapadas. El `board` enviado solo contiene lo que el jugador puede ver (casilla oculta, bandera o número). Solo cuando la partida termina en derrota se muestran todas las minas.
+
+
+**Códigos del `board`** (matriz de enteros, una por casilla):
+
+| Valor | Significado |
+| :---- | :---- |
+| `-1` | Casilla oculta |
+| `-2` | Casilla con bandera |
+| `0` a `8` | Casilla destapada con ese número de minas vecinas |
+| `9` | Mina *(solo al perder)* |
+| `10` | Mina destapada, la que provocó la derrota *(solo al perder)* |
+| `11` | Bandera sobre una casilla sin mina *(solo al perder)* |
+
+`data` incluye `rows`, `cols`, `mines`, `flags` y `mines_remaining` (minas menos banderas; puede ser negativo). Al ganar, las minas restantes aparecen como banderas.
 
 #### Por qué Java
 

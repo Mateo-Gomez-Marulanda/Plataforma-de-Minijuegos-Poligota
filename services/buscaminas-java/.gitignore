@@ -1,0 +1,4 @@
+# Archivos que git no debe versionar: compilados de Maven e IDEs.
+target/
+.idea/
+*.iml
