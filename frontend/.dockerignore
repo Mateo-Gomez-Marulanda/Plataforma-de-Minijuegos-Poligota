@@ -1,0 +1,3 @@
+# Excluye del build de Docker las dependencias locales y el build generado.
+node_modules
+dist

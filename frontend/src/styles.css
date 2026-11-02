@@ -1,0 +1,269 @@
+/* Estilos globales del sitio. Tokens de color/tipografía arriba; después base, fichas, inicio y pantallas interiores. */
+
+:root {
+  /* Tablero y papel */
+  --tablero: #202a5c;
+  --superficie: #2b3772;
+  --papel: #f4f2ec;
+  --papel-tenue: #c3c7e0;
+  --tinta: #14193a;
+  /* Una ficha por juego/lenguaje */
+  --amarillo: #f4c430;
+  --coral: #ef5b45;
+  --violeta: #a06cde;
+  --verde: #3dbe8b;
+
+  --fuente-titulo: 'Unbounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --fuente-texto: 'Hanken Grotesk', system-ui, sans-serif;
+  --margen: clamp(1rem, 5vw, 4rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--tablero);
+  /* Cuadrícula tenue de tablero */
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  color: var(--papel);
+  font-family: var(--fuente-texto);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 4px;
+}
+
+/* ---------- Fichas (marca) ---------- */
+
+.fichas {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ficha {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.3rem;
+}
+
+.ficha--amarillo { background: var(--amarillo); }
+.ficha--coral { background: var(--coral); }
+.ficha--violeta { background: var(--violeta); }
+.ficha--verde { background: var(--verde); }
+
+/* Las fichas de la pantalla de inicio caen en orden, como piezas de Tetris */
+.fichas--cae .ficha {
+  animation: cae 0.6s cubic-bezier(0.3, 0.7, 0.4, 1) backwards;
+  animation-delay: calc(var(--orden) * 0.14s);
+}
+
+@keyframes cae {
+  from { transform: translateY(-5rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ---------- Pantallas ---------- */
+
+.pantalla {
+  min-height: 100vh;
+  padding: var(--margen);
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+.pantalla--inicio {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.pantalla--inicio .ficha {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.4rem;
+}
+
+.titulo {
+  margin: 0;
+  text-wrap: balance;
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  font-size: clamp(2.3rem, 7.4vw, 5.8rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.titulo__linea {
+  display: block;
+}
+
+/* ---------- Botones ---------- */
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.boton {
+  display: inline-block;
+  padding: 0.85rem 1.4rem;
+  border: 2px solid var(--papel);
+  border-radius: 0.5rem;
+  color: var(--papel);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.boton:hover {
+  background: var(--papel);
+  color: var(--tablero);
+}
+
+.boton:active {
+  transform: translateY(2px);
+}
+
+.boton--principal {
+  background: var(--amarillo);
+  border-color: var(--amarillo);
+  color: var(--tinta);
+}
+
+.boton--principal:hover {
+  background: var(--papel);
+  border-color: var(--papel);
+  color: var(--tinta);
+}
+
+/* ---------- Pantallas interiores ---------- */
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--papel-tenue);
+  text-decoration: none;
+}
+
+.volver:hover {
+  color: var(--papel);
+}
+
+.volver .ficha {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.2rem;
+}
+
+.volver .fichas {
+  gap: 0.2rem;
+}
+
+.titulo-interior {
+  margin: 2.5rem 0 2rem;
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  font-size: clamp(2rem, 5.5vw, 3.8rem);
+  line-height: 1.1;
+}
+
+/* Lista de juegos: fichas de color, texto oscuro */
+.lista-juegos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.juego {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 11rem;
+  padding: 1.4rem;
+  border-radius: 0.6rem;
+  color: var(--tinta);
+}
+
+.juego--amarillo { background: var(--amarillo); }
+.juego--coral { background: var(--coral); }
+.juego--violeta { background: var(--violeta); }
+.juego--verde { background: var(--verde); }
+
+.juego__nombre {
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  font-size: 1.6rem;
+}
+
+.juego__estado {
+  margin-top: auto;
+  font-weight: 600;
+}
+
+/* Créditos */
+.bloque {
+  max-width: 44rem;
+  margin-bottom: 2.5rem;
+}
+
+.bloque h2 {
+  margin: 0 0 0.6rem;
+  font-family: var(--fuente-titulo);
+  font-weight: 500;
+  font-size: 1.2rem;
+}
+
+.bloque p {
+  margin: 0;
+}
+
+.tecnologias {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.tecnologia {
+  padding: 0.8rem 1rem;
+  background: var(--superficie);
+  border-left: 0.5rem solid var(--papel-tenue);
+  border-radius: 0.3rem;
+}
+
+.tecnologia--amarillo { border-left-color: var(--amarillo); }
+.tecnologia--coral { border-left-color: var(--coral); }
+.tecnologia--violeta { border-left-color: var(--violeta); }
+.tecnologia--verde { border-left-color: var(--verde); }
+
+.tecnologia dt {
+  color: var(--papel-tenue);
+  font-size: 0.95rem;
+}
+
+.tecnologia dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fichas--cae .ficha { animation: none; }
+  .boton { transition: none; }
+}
