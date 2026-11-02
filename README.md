@@ -44,7 +44,7 @@ docker compose down              # detener
 
 ## Estado
 
-Listos: estructura, Docker, gateway, los cuatro servicios (Sudoku, Snake, Buscaminas y Tetris) y frontend (inicio, minijuegos, créditos, y Sudoku, Snake y Buscaminas jugables). Pendiente: pantalla de Tetris.
+Todo implementado: gateway, los cuatro servicios (Sudoku en Python, Buscaminas en Java, Snake en Elixir y Tetris en C#) y el frontend con los cuatro juegos jugables, el inicio y los créditos.
 
 ## Desarrollo local del Sudoku
 

@@ -447,7 +447,8 @@ a:focus-visible {
 
 .sudoku__aviso,
 .snake__aviso,
-.buscaminas__aviso {
+.buscaminas__aviso,
+.tetris__aviso {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -502,6 +503,104 @@ a:focus-visible {
 
 @media (pointer: coarse) {
   .snake__cruceta { display: grid; }
+}
+
+/* ---------- Tetris ---------- */
+
+.tetris {
+  /* Ancho del tablero 10x20: como mucho 22rem, o menos si la ventana es baja (el alto es el doble del ancho) */
+  --ancho: min(22rem, max(12rem, calc((100vh - 16rem) / 2)));
+  display: grid;
+  grid-template-columns: var(--ancho) minmax(13rem, 18rem);
+  gap: 2.5rem;
+  align-items: start;
+  justify-content: start;
+}
+
+.tetris__tablero {
+  width: min(100%, var(--ancho));
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(20, 1fr);
+  gap: 1px;
+  aspect-ratio: 1 / 2;
+  padding: 3px;
+  border-radius: 0.5rem;
+  background: var(--tinta);
+}
+
+.tetris__tablero--pausa { opacity: 0.45; }
+
+.cuadro {
+  border-radius: 0.15rem;
+  background: rgb(255 255 255 / 0.04);
+}
+
+.cuadro--I { background: #5ec8e6; }
+.cuadro--O { background: var(--amarillo); }
+.cuadro--T { background: var(--violeta); }
+.cuadro--S { background: var(--verde); }
+.cuadro--Z { background: var(--coral); }
+.cuadro--J { background: #4f7be8; }
+.cuadro--L { background: #f08a3c; }
+.cuadro--sombra { background: transparent; box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.28); }
+
+.tetris__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.tetris__panel p { margin: 0; }
+
+.tetris__datos {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.tetris__datos div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.tetris__datos dt { color: var(--papel-tenue); }
+
+.tetris__datos dd {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.tetris__etiqueta { color: var(--papel-tenue); margin-bottom: 0.5rem !important; }
+
+.tetris__siguiente {
+  display: grid;
+  grid-template-columns: repeat(4, 1.6rem);
+  grid-template-rows: repeat(2, 1.6rem);
+  gap: 2px;
+  width: max-content;
+  min-height: 3.4rem;
+}
+
+/* Controles táctiles: solo en pantallas sin puntero preciso */
+.tetris__cruceta {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-width: 14rem;
+}
+
+.tetris__cruceta-left { grid-column: 1; grid-row: 1; }
+.tetris__cruceta-rotate { grid-column: 2; grid-row: 1; }
+.tetris__cruceta-right { grid-column: 3; grid-row: 1; }
+.tetris__cruceta-soft_drop { grid-column: 1; grid-row: 2; }
+.tetris__cruceta-hard_drop { grid-column: 2 / 4; grid-row: 2; }
+
+@media (pointer: coarse) {
+  .tetris__cruceta { display: grid; }
 }
 
 /* ---------- Buscaminas ---------- */
@@ -605,7 +704,8 @@ a:focus-visible {
 
 @media (max-width: 52rem) {
   .sudoku,
-  .snake { grid-template-columns: 1fr; }
+  .snake,
+  .tetris { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

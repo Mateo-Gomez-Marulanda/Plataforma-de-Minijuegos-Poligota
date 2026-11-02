@@ -6,6 +6,7 @@ import Creditos from './pages/Creditos.jsx';
 import JuegoSudoku from './pages/JuegoSudoku.jsx';
 import JuegoSnake from './pages/JuegoSnake.jsx';
 import JuegoBuscaminas from './pages/JuegoBuscaminas.jsx';
+import JuegoTetris from './pages/JuegoTetris.jsx';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       <Route path="/juegos/sudoku" element={<JuegoSudoku />} />
       <Route path="/juegos/snake" element={<JuegoSnake />} />
       <Route path="/juegos/buscaminas" element={<JuegoBuscaminas />} />
+      <Route path="/juegos/tetris" element={<JuegoTetris />} />
       <Route path="/creditos" element={<Creditos />} />
       <Route path="*" element={<Inicio />} />
     </Routes>

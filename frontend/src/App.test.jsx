@@ -50,13 +50,13 @@ test('una ruta desconocida lleva al inicio', () => {
   expect(screen.getByRole('link', { name: 'Ir a los minijuegos' })).toBeTruthy();
 });
 
-test('en Minijuegos solo Sudoku, Buscaminas y Snake son enlaces jugables', () => {
+test('en Minijuegos los cuatro juegos son enlaces jugables', () => {
   en('/juegos');
   expect(screen.getByRole('link', { name: /Sudoku/ }).getAttribute('href')).toBe('/juegos/sudoku');
   expect(screen.getByRole('link', { name: /Buscaminas/ }).getAttribute('href')).toBe('/juegos/buscaminas');
   expect(screen.getByRole('link', { name: /Snake/ }).getAttribute('href')).toBe('/juegos/snake');
-  expect(screen.queryByRole('link', { name: /Tetris/ })).toBeNull();
-  expect(screen.getAllByText('Disponible pronto')).toHaveLength(1);
+  expect(screen.getByRole('link', { name: /Tetris/ }).getAttribute('href')).toBe('/juegos/tetris');
+  expect(screen.queryByText('Disponible pronto')).toBeNull();
 });
 
 test('Créditos muestra a los dos autores con su imagen debajo del nombre', () => {
