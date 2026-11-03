@@ -6,7 +6,7 @@ Las dos piezas que conectan al jugador con los servicios. Ninguna contiene lógi
 
 ### Para qué sirve
 
-Es la **única puerta de entrada**. El navegador solo habla con `localhost:3000`; el gateway reenvía cada petición al servicio correcto, y lo hace tanto con HTTP como con WebSocket.
+Es la **puerta de entrada a los servicios**. Recibe las peticiones que le reenvía el servidor de Vite (ver [más abajo](#cómo-habla-con-el-backend)) y las manda al servicio correcto, tanto con HTTP como con WebSocket.
 
 | Ruta pública | Destino interno | Protocolo |
 | :---- | :---- | :---- |
@@ -24,7 +24,7 @@ Los destinos se pueden cambiar con las variables de entorno `SUDOKU_URL`, `BUSCA
 | **Node.js** | 22 | Entorno de ejecución |
 | **Express** | 5.3 | Servidor HTTP y encadenamiento de *middleware* |
 | **http-proxy-middleware** | 4.2 | Hace el reenvío (proxy). Debajo usa la librería `http-proxy` |
-| **cors** | 2.8 | Permite que el navegador, desde `localhost:5173`, llame a `localhost:3000` |
+| **cors** | 2.8 | Permite llamadas desde otro origen. Ya no es imprescindible (el navegador llama a su propio origen), pero se conserva por si se accede al gateway directamente |
 | **ws** (solo pruebas) | 8.22 | Cliente y servidor WebSocket para probar el proxy |
 | **node:test** | (incluido en Node) | Ejecutor de pruebas |
 
@@ -107,11 +107,27 @@ La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de e
 
 ### Cómo habla con el backend
 
-**REST (Sudoku y Buscaminas).** `api/cliente.js` envuelve `fetch`: añade la dirección del gateway (`VITE_API_URL`, por defecto `http://localhost:3000`), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
+**El navegador solo habla con su propio origen.** Las rutas son relativas (`/api/sudoku/...`, `/ws/snake`), sin ninguna dirección fija. El servidor de desarrollo de Vite las reenvía al gateway según `vite.config.js`:
 
-La dirección es `localhost:3000` y no un nombre de servicio de Docker porque **la petición sale del navegador**, que corre en tu máquina, no dentro de la red de Docker.
+```js
+server: {
+  allowedHosts: true,
+  proxy: {
+    '/api': { target: gateway, changeOrigin: true },
+    '/ws':  { target: gateway, ws: true, changeOrigin: true },   // ws: true → también WebSockets
+  },
+}
+```
 
-**WebSocket (Snake y Tetris).** `api/websocket.js` abre `new WebSocket(...)` contra el gateway y traduce los mensajes del servidor a funciones: `onEstado` para cada `state`, `onFin` para `game_over`, `onError` y `onCierre`. Devuelve acciones (`empezar`, `tecla`, `pausar`, `reanudar`, `cerrar`).
+`gateway` es `http://localhost:3000` en desarrollo local y `http://gateway:3000` en Docker Compose (variable de entorno `GATEWAY_URL`).
+
+**Por qué así y no con `http://localhost:3000` directo en el navegador.** Las peticiones salen del **navegador**, no del servidor. Si el código llamara a `localhost:3000`, quien abriera la web desde otro ordenador (por ejemplo, con el reenvío de puertos de VS Code) estaría llamando a **su propio** `localhost`, donde no hay ningún gateway: la página cargaría, pero ningún juego conectaría. Con rutas relativas, la petición siempre va al mismo sitio del que vino la página, y el servidor de Vite (que sí está en tu máquina) la reenvía. Por eso basta con compartir un solo puerto, el 5173.
+
+`allowedHosts: true` hace falta porque Vite rechaza por defecto los nombres de host que no conoce (como el de un túnel de VS Code), con un `403 Blocked request`.
+
+**REST (Sudoku y Buscaminas).** `api/cliente.js` envuelve `fetch`: usa la dirección de `VITE_API_URL` si se define (por defecto vacía, es decir, el mismo origen), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
+
+**WebSocket (Snake y Tetris).** `api/websocket.js` abre `new WebSocket(...)` contra el mismo host que la página (`ws://` si es `http://`, `wss://` si es `https://`) y traduce los mensajes del servidor a funciones: `onEstado` para cada `state`, `onFin` para `game_over`, `onError` y `onCierre`. Devuelve acciones (`empezar`, `tecla`, `pausar`, `reanudar`, `cerrar`).
 
 ### Cómo está hecho un componente de juego
 

@@ -4,6 +4,9 @@ services:
   frontend:
     build: ./frontend
     ports: ["5173:5173"]
+    # El servidor de Vite reenvía /api y /ws al gateway por la red interna de Docker.
+    environment:
+      GATEWAY_URL: http://gateway:3000
     depends_on: [gateway]
 
   gateway:

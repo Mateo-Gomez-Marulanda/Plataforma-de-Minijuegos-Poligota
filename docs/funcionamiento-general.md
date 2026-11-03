@@ -5,27 +5,27 @@ Este documento explica el recorrido completo de una jugada, desde el navegador h
 ## 1. Vista general
 
 ```
- Navegador                      Docker Compose (red "minijuegos-net")
-┌──────────────┐        ┌───────────────┐        ┌───────────────────────────────┐
-│ React (Vite) │  HTTP  │   Gateway     │  HTTP  │ sudoku-service      :8001     │
-│ :5173        ├───────▶│ Node + Express├───────▶│   Python · FastAPI · Uvicorn  │
-│              │  WS    │ :3000         │        ├───────────────────────────────┤
-│ solo dibuja  ├───────▶│ reenvía por   ├───────▶│ buscaminas-service  :8002     │
-│ y envía      │        │ prefijo       │        │   Java 21 · Spring Boot       │
-│ jugadas      │        │               │   WS   ├───────────────────────────────┤
-└──────────────┘        │               ├───────▶│ snake-service       :8003     │
-                        │               │        │   Elixir · Bandit · Plug      │
-                        │               │   WS   ├───────────────────────────────┤
-                        │               ├───────▶│ tetris-service      :8004     │
-                        └───────────────┘        │   C# · ASP.NET Core · Kestrel │
-                                                 └───────────────────────────────┘
+ Navegador                  Servidor de Vite        Gateway                   Docker Compose (red "minijuegos-net")
+┌─────────────┐  mismo    ┌───────────────┐       ┌───────────────┐        ┌───────────────────────────────┐
+│ React       │  origen   │ :5173         │ HTTP  │ Node + Express│  HTTP  │ sudoku-service      :8001     │
+│             ├──────────▶│ sirve la web  ├──────▶│ :3000         ├───────▶│   Python · FastAPI · Uvicorn  │
+│ solo dibuja │ /api, /ws │ y reenvía     │  WS   │ reenvía por   │        ├───────────────────────────────┤
+│ y envía     │           │ /api y /ws    ├──────▶│ prefijo       ├───────▶│ buscaminas-service  :8002     │
+│ jugadas     │           │ (proxy)       │       │               │        │   Java 21 · Spring Boot       │
+└─────────────┘           └───────────────┘       │               │   WS   ├───────────────────────────────┤
+                                                  │               ├───────▶│ snake-service       :8003     │
+                                                  │               │        │   Elixir · Bandit · Plug      │
+                                                  │               │   WS   ├───────────────────────────────┤
+                                                  │               ├───────▶│ tetris-service      :8004     │
+                                                  └───────────────┘        │   C# · ASP.NET Core · Kestrel │
+                                                                           └───────────────────────────────┘
 ```
 
 Tres ideas sostienen todo el proyecto:
 
 1. **El navegador no sabe jugar.** React solo dibuja la matriz `board` que recibe y envía las acciones del jugador. Nunca valida una jugada ni calcula dónde cae una pieza.
 2. **El servidor es la autoridad.** El estado real de cada partida vive en el servicio, en memoria. Así toda la lógica que se quiere estudiar está en el lenguaje del servicio.
-3. **El gateway es la única puerta.** El navegador solo conoce `localhost:3000`. Cambiar el lenguaje o el puerto de un juego no obliga a tocar React.
+3. **Una sola puerta.** El navegador solo habla con el origen de la propia página (el puerto 5173): el servidor de Vite reenvía `/api` y `/ws` al gateway, y el gateway al servicio correcto. Cambiar el lenguaje o el puerto de un juego no obliga a tocar React, y para compartir la web basta con compartir ese puerto.
 
 ## 2. Qué tecnología hace cada cosa
 
@@ -45,33 +45,35 @@ Ninguno usa motores de juego: las reglas están programadas a mano. Las librerí
 Los juegos por turnos solo cambian cuando el jugador actúa. Ejemplo: poner un 5 en el Sudoku.
 
 ```
-1. React           fetch("http://localhost:3000/api/sudoku/games/ab12/move", POST, {action: {...}})
-2. Gateway         recibe /api/sudoku/games/ab12/move
+1. React           fetch("/api/sudoku/games/ab12/move", POST, {action: {...}})   ← ruta relativa: mismo origen
+2. Vite (proxy)    reenvía /api/... al gateway (http://localhost:3000, o http://gateway:3000 en Docker)
+3. Gateway         recibe /api/sudoku/games/ab12/move
                    quita el prefijo  →  /games/ab12/move
                    reenvía a http://sudoku-service:8001/games/ab12/move
-3. Servidor web    Uvicorn (Python) / Tomcat (Java) lee la petición HTTP
-4. Framework       FastAPI / Spring Boot elige la función por método + ruta
-5. Capa servidor   convierte el JSON en un objeto de la lógica (la "acción")
-6. Lógica          aplica la acción al estado y devuelve el estado nuevo
-7. Capa servidor   convierte el estado en JSON: {id, game, status, board, data, message}
-8. Respuesta       vuelve por el mismo camino hasta React, que vuelve a dibujar
+4. Servidor web    Uvicorn (Python) / Tomcat (Java) lee la petición HTTP
+5. Framework       FastAPI / Spring Boot elige la función por método + ruta
+6. Capa servidor   convierte el JSON en un objeto de la lógica (la "acción")
+7. Lógica          aplica la acción al estado y devuelve el estado nuevo
+8. Capa servidor   convierte el estado en JSON: {id, game, status, board, data, message}
+9. Respuesta       vuelve por el mismo camino hasta React, que vuelve a dibujar
 ```
 
-Si la jugada no es válida, el paso 6 lanza una excepción propia (`MovimientoInvalido`) y el framework la convierte en `422` con el cuerpo `{"error": "INVALID_MOVE", "message": "..."}`.
+Si la jugada no es válida, el paso 7 lanza una excepción propia (`MovimientoInvalido`) y el framework la convierte en `422` con el cuerpo `{"error": "INVALID_MOVE", "message": "..."}`.
 
 ## 4. Recorrido de una conexión WebSocket (Snake y Tetris)
 
 Aquí el juego avanza solo, así que no basta con preguntar y responder: el servidor tiene un reloj interno (el *tick*) y empuja el estado nuevo al cliente.
 
 ```
-1. React           new WebSocket("ws://localhost:3000/ws/snake")
-2. Gateway         recibe un "Upgrade: websocket" y lo reenvía a ws://snake-service:8003/ws
-3. Servicio        acepta la conexión: una conexión = una partida
-4. Cliente → Srv.  {"type":"start"}  → el servidor crea la partida y arranca el reloj
-5. Servidor        cada tick: avanza el juego y envía {"type":"state", "board": ...}
-6. Cliente → Srv.  {"type":"input","key":"left"} → se aplica en el siguiente tick
-7. Servidor        al terminar: {"type":"game_over", ...} y detiene el reloj
-8. Cierre          si el navegador cierra la conexión, el servicio libera la partida
+1. React           new WebSocket("ws://<host de la página>/ws/snake")   (wss:// si la página es https)
+2. Vite (proxy)    reenvía la conexión al gateway (con soporte de WebSocket)
+3. Gateway         recibe un "Upgrade: websocket" y lo reenvía a ws://snake-service:8003/ws
+4. Servicio        acepta la conexión: una conexión = una partida
+5. Cliente → Srv.  {"type":"start"}  → el servidor crea la partida y arranca el reloj
+6. Servidor        cada tick: avanza el juego y envía {"type":"state", "board": ...}
+7. Cliente → Srv.  {"type":"input","key":"left"} → se aplica en el siguiente tick
+8. Servidor        al terminar: {"type":"game_over", ...} y detiene el reloj
+9. Cierre          si el navegador cierra la conexión, el servicio libera la partida
 ```
 
 Se usan **WebSockets nativos con mensajes JSON**, no las librerías propias de cada framework (Phoenix Channels, SignalR), porque exigirían un cliente especial y harían que React tuviera que saber en qué lenguaje está cada juego.

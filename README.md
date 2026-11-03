@@ -45,6 +45,12 @@ El gateway queda en http://localhost:3000.
 
 Para detener todo, `docker compose down`. Si `docker compose` falla al descargar imágenes con un error de `credentials` o `gpg`, desbloquea gpg o quita `credsStore` de `~/.docker/config.json`.
 
+## Compartir la web con otra persona
+
+Solo hace falta compartir el puerto **5173**. En VS Code: pestaña *Puertos* → *Reenviar un puerto* → `5173` → visibilidad *Pública* y compartir el enlace. No hace falta reenviar el 3000: el servidor de Vite reenvía `/api` y `/ws` al gateway, así que el navegador de la otra persona solo habla con el enlace que le diste.
+
+Mientras tanto tu equipo debe tener el backend y la web en marcha (la "Opción A" o la "Opción B" de arriba).
+
 ## Comandos
 
 ```sh

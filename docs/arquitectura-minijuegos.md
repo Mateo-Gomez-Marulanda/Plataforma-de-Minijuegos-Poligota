@@ -96,7 +96,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 | `/ws/snake` | `ws://snake-service:8003/ws` | WebSocket |
 | `/ws/tetris` | `ws://tetris-service:8004/ws` | WebSocket |
 
-El frontend **solo conoce el gateway** (`localhost:3000`). Nunca llama directamente a un servicio de juego. Esto permite cambiar el lenguaje o el puerto de un juego sin tocar React.
+El frontend **solo conoce el gateway**, y llega a él sin direcciones fijas: el navegador llama a su propio origen (`/api/...` y `/ws/...`) y el servidor de desarrollo de Vite reenvía esas rutas al gateway (`localhost:3000`). Así la web funciona también para quien la abre desde otro equipo. Nunca llama directamente a un servicio de juego. Esto permite cambiar el lenguaje o el puerto de un juego sin tocar React.
 
 ### 2.4 Dos modelos de comunicación
 

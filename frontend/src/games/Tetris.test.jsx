@@ -58,7 +58,7 @@ const enviados = () => ws().enviados.slice(1); // sin el `start`
 
 test('se conecta al gateway y permite jugar cuando la conexión se abre', () => {
   render(<Tetris />);
-  expect(ws().url).toBe('ws://localhost:3000/ws/tetris');
+  expect(ws().url).toBe('ws://localhost:5173/ws/tetris');
   expect(screen.getByText('Conectando…')).toBeTruthy();
   ws().abrir();
   expect(screen.getByRole('button', { name: 'Jugar' })).toBeTruthy();

@@ -1,8 +1,11 @@
 // Cliente HTTP base: todas las llamadas al backend pasan por el gateway (nunca a un servicio directo).
 // Traduce los fallos (sin conexión o error del contrato {error, message}) en un único tipo de error.
 
-// Dirección del gateway; se puede cambiar con VITE_API_URL.
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// Dirección del gateway. Por defecto está vacía: las llamadas van al MISMO origen que la página (/api/..., /ws/...)
+// y el servidor de Vite las reenvía al gateway. Así la web funciona también para quien la abre desde otro equipo
+// (por ejemplo, con el reenvío de puertos de VS Code), donde "localhost" sería su propio ordenador.
+// Se puede forzar otra dirección con VITE_API_URL.
+export const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 // Error de la API con el código del contrato (por ejemplo INVALID_MOVE) y un mensaje legible.
 export class ErrorApi extends Error {

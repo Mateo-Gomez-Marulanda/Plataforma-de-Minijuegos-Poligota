@@ -2,8 +2,8 @@
 // Una conexión equivale a una partida. Solo habla con el gateway; cada juego aporta su ruta (/ws/snake, /ws/tetris...).
 import { API_URL } from './cliente.js';
 
-// Convierte la dirección HTTP del gateway en la del WebSocket (http -> ws, https -> wss).
-const urlWs = (ruta) => API_URL.replace(/^http/, 'ws') + ruta;
+// Dirección del WebSocket: la del gateway si se configuró, o la de la propia página (http -> ws, https -> wss).
+const urlWs = (ruta) => (API_URL || window.location.origin).replace(/^http/, 'ws') + ruta;
 
 // Abre la conexión y traduce los mensajes del servidor a callbacks.
 // Callbacks: onAbrir(), onEstado(msg), onFin(data), onError(msg), onCierre().

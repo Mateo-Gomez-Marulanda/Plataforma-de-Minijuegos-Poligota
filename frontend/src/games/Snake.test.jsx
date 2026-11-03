@@ -56,7 +56,7 @@ function jugar() {
 
 test('se conecta al gateway y permite jugar cuando la conexión se abre', () => {
   render(<Snake />);
-  expect(ws().url).toBe('ws://localhost:3000/ws/snake');
+  expect(ws().url).toBe('ws://localhost:5173/ws/snake');
   expect(screen.getByText('Conectando…')).toBeTruthy();
   ws().abrir();
   expect(screen.getByRole('button', { name: 'Jugar' })).toBeTruthy();
