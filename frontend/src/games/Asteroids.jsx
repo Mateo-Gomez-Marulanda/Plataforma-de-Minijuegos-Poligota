@@ -210,7 +210,7 @@ export default function Asteroids() {
           <div><dt>Puntaje</dt><dd>{puntaje}</dd></div>
           <div><dt>Oleada</dt><dd>{oleada}</dd></div>
           <div>
-            <dt>Vidas</dt>
+            <dt className="asteroids__corazon" aria-hidden="true">♥</dt>
             <dd key={efectos.vidas} aria-label="Vidas" className={efectos.vidas > 0 ? 'asteroids__vidas--sube' : undefined}>{datos ? datos.lives : 3}</dd>
           </div>
           <div>

@@ -515,7 +515,7 @@ Piezas de cuatro bloques (*tetrominós*: I, O, T, S, Z, J, L) caen desde la part
 
 **Aviso de líneas (combo).** Como en Asteroids, el `state` lleva `events` con lo ocurrido en ese paso. Cuando una pieza limpia líneas, el evento es `lines_1`, `lines_2` o `lines_3` según cuántas se limpiaron a la vez, o `tetris` si fueron 4. El frontend muestra sobre el tablero «x1», «x2», «x3» o «TETRIS» durante poco más de un segundo. Es solo un efecto visual: el puntaje sigue siendo el de siempre. Al pausar o reanudar se reenvía el mismo estado con `events` vacío, para que el aviso no se repita.
 
-**Puntaje:** 100, 300, 500 y 800 por 1, 2, 3 y 4 líneas a la vez (multiplicado por el nivel), 1 punto por fila en caída suave y 2 por fila en caída rápida. El nivel sube cada 10 líneas y la gravedad parte de 1 s por fila.
+**Puntaje:** 100, 300, 500 y 800 por 1, 2, 3 y 4 líneas a la vez (multiplicado por el nivel), 1 punto por fila en caída suave y 2 por fila en caída rápida. El nivel sube cada 10 líneas y la gravedad parte de 1 s por fila y baja 60 ms por nivel de forma lineal (nivel 8: 580 ms, nivel 10: 460 ms), con un mínimo de 100 ms.
 
 #### Por qué C\#
 

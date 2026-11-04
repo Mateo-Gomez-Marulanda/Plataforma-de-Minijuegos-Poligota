@@ -82,7 +82,7 @@ El generador aleatorio (`Rng`, algoritmo SplitMix64) es **puro**: su estado es u
 | Caída suave | Baja una fila y da 1 punto. En el suelo no hace nada: se fijará en el siguiente tick |
 | Caída rápida | Baja hasta el fondo (2 puntos por fila) y se fija al instante |
 | Líneas | 100, 300, 500 y 800 puntos por 1, 2, 3 y 4 líneas, multiplicado por el nivel |
-| Nivel | Sube cada 10 líneas; la gravedad sigue la fórmula de la guía oficial: `(0,8 − (nivel−1)·0,007)^(nivel−1)` segundos, con 60 ms de mínimo |
+| Nivel | Sube cada 10 líneas; la gravedad baja de forma lineal: `1000 − 60·(nivel−1)` ms por fila, con 100 ms de mínimo (nivel 8: 580 ms, nivel 10: 460 ms, nivel 14: 220 ms, mínimo desde el nivel 16) |
 
 ### 3.6 La matriz que se dibuja
 

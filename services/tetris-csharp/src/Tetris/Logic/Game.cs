@@ -54,13 +54,17 @@ public static class Game
     /// <summary>Indica si la partida terminó: devuelve el motivo ("top_out") o null si sigue.</summary>
     public static string? IsOver(GameState state) => state.Status == GameStatus.GameOver ? "top_out" : null;
 
-    /// <summary>Milisegundos entre ticks de gravedad según el nivel (fórmula de la guía oficial, con un mínimo de 60 ms).</summary>
-    public static int IntervalMs(GameState state)
-    {
-        int nivel = state.Level;
-        double segundos = Math.Pow(0.8 - (nivel - 1) * 0.007, nivel - 1);
-        return (int)Math.Max(60, segundos * 1000);
-    }
+    // Gravedad: parte de 1000 ms por fila y baja una cantidad fija por nivel (aumento lineal y suave), con un mínimo.
+    private const int IntervaloInicialMs = 1000;
+    private const int MsMenosPorNivel = 60;
+    private const int IntervaloMinimoMs = 100;
+
+    /// <summary>
+    /// Milisegundos entre ticks de gravedad según el nivel: 1000 ms en el nivel 1 y 60 ms menos por cada nivel
+    /// (nivel 8: 580 ms, nivel 10: 460 ms, nivel 14: 220 ms), con un mínimo de 100 ms desde el nivel 16.
+    /// </summary>
+    public static int IntervalMs(GameState state) =>
+        Math.Max(IntervaloMinimoMs, IntervaloInicialMs - MsMenosPorNivel * (state.Level - 1));
 
     /// <summary>
     /// Matriz que se dibuja: casillas fijadas, la pieza activa (1 a 7) y su sombra de aterrizaje (8) en las casillas libres.

@@ -767,6 +767,12 @@ a:focus-visible {
 }
 
 /* ---------- Blackjack ---------- */
+.asteroids__datos dt.asteroids__corazon {
+  color: var(--coral);
+  font-size: 3rem; /* el doble que antes */
+  line-height: 1;
+}
+
 
 .blackjack {
   display: flex;

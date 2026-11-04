@@ -255,7 +255,39 @@ public class GameTests
     public void ElIntervaloDeGravedadEmpiezaEn1000msYTieneUnMinimo()
     {
         Assert.Equal(1000, Game.IntervalMs(Game.NewGame(1)));
-        Assert.Equal(60, Game.IntervalMs(Game.NewGame(1) with { Lines = 300 }));
+        Assert.Equal(100, Game.IntervalMs(Game.NewGame(1) with { Lines = 300 }));
+    }
+
+    // Intervalo en un nivel concreto (el nivel sube cada 10 líneas).
+    private static int EnNivel(int nivel) => Game.IntervalMs(Game.NewGame(1) with { Lines = (nivel - 1) * 10 });
+
+    [Theory]
+    [InlineData(1, 1000)]
+    [InlineData(2, 940)]
+    [InlineData(5, 760)]
+    [InlineData(8, 580)]
+    [InlineData(10, 460)]
+    [InlineData(14, 220)]
+    [InlineData(16, 100)]
+    [InlineData(30, 100)]
+    public void LaGravedadBajaUnaCantidadFijaPorNivel(int nivel, int esperado) => Assert.Equal(esperado, EnNivel(nivel));
+
+    [Fact]
+    public void ElAumentoDeVelocidadEsLinealHastaElMinimo()
+    {
+        // Cada nivel quita los mismos 60 ms hasta llegar al mínimo de 100 ms (nivel 16).
+        for (int nivel = 2; nivel <= 16; nivel++)
+        {
+            Assert.Equal(60, EnNivel(nivel - 1) - EnNivel(nivel));
+        }
+        Assert.Equal(0, EnNivel(16) - EnNivel(17));
+    }
+
+    [Fact]
+    public void ElNivelOchoYaNoEsInjugable()
+    {
+        // Antes bajaba a unos 133 ms; ahora la pieza tarda más de medio segundo por fila.
+        Assert.True(EnNivel(8) >= 500);
     }
 
     // ---- Fin de partida ----
