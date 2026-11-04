@@ -95,8 +95,24 @@ frontend/src/
 ├── games/                   un componente por juego (Sudoku, Buscaminas, Snake, Tetris, Asteroids, Blackjack)
 ├── pages/                   una pantalla por ruta (Inicio, Juegos, Créditos, un marco por juego)
 ├── components/              piezas reutilizables (Fichas, Pagina, Autor)
+├── musica/                  catálogo de pistas, reproductor, estado global y botón de música
 └── styles.css
 ```
+
+### Música
+
+Cada juego tiene su pista en `public/musica/` (`<id>.mp3`) y la estructura vive en `src/musica/`:
+
+| Archivo | Qué hace |
+| :---- | :---- |
+| `pistas.js` | **El catálogo**: una entrada por juego con la ruta de su pista y, en `FUENTES`, el enlace de donde salió la canción (alimenta la sección «Soundtracks» de `/creditos`). Es lo único que hay que editar para añadir música. |
+| `reproductor.js` | Envuelve un único elemento de audio en bucle infinito y a volumen moderado; `pausar()` conserva la posición y `detener()` suelta la pista. Si el navegador bloquea el sonido automático, reintenta en el siguiente clic o tecla. |
+| `MusicaContext.jsx` | `MusicaProvider` guarda si la música está activada (se recuerda entre visitas en `localStorage`; por defecto está **desactivada**) y qué pista pide la pantalla actual. `usePista(idJuego)` es el hook que usa cada pantalla. |
+| `BotonMusica.jsx` | Botón flotante «Música: activada / desactivada», visible en todas las pantallas. |
+
+Cada pantalla de juego le dice a `Pagina` qué juego es con `musica="tetris"`; al entrar, esa es la pista actual y al salir se calla. La música solo suena si está activada **y** el juego tiene pista. Al desactivarla con el botón, la canción se **pausa** y al reactivarla continúa donde iba; al cambiar de juego empieza la del nuevo.
+
+**Para añadir la música de un juego:** copia el archivo a `frontend/public/musica/` (por ejemplo `tetris.mp3`), escribe `tetris: '/musica/tetris.mp3'` en `PISTAS` y su enlace en `FUENTES` de `pistas.js`. Un juego nuevo necesita su entrada en `pistas.js` (una prueba lo comprueba) y `musica="<id>"` en su pantalla.
 
 ### Pausa y cronómetro compartidos
 
@@ -110,7 +126,7 @@ frontend/src/
 | `/` | Bienvenida con los botones de minijuegos, GitHub y créditos |
 | `/juegos` | Los seis juegos |
 | `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids`, `/juegos/blackjack` | Cada juego |
-| `/creditos` | Autores y tecnologías |
+| `/creditos` | Autores, tecnologías y soundtracks (enlaces a las canciones) |
 
 La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de escenario dentro de la misma web.
 

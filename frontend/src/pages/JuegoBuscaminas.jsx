@@ -4,7 +4,7 @@ import Buscaminas from '../games/Buscaminas.jsx';
 
 export default function JuegoBuscaminas() {
   return (
-    <Pagina titulo="Buscaminas" volverAJuegos>
+    <Pagina titulo="Buscaminas" volverAJuegos musica="buscaminas">
       <Buscaminas />
     </Pagina>
   );

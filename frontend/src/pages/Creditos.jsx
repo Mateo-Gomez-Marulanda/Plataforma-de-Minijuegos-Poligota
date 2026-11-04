@@ -2,6 +2,7 @@
 import Autor from '../components/Autor.jsx';
 import Pagina from '../components/Pagina.jsx';
 import { AUTORES, JUEGOS } from '../config.js';
+import { FUENTES } from '../musica/pistas.js';
 
 export default function Creditos() {
   return (
@@ -32,6 +33,19 @@ export default function Creditos() {
             <dd>React</dd>
           </div>
         </dl>
+      </section>
+      <section className="bloque">
+        <h2>Soundtracks</h2>
+        <ul className="soundtracks">
+          {JUEGOS.map((j) => (
+            <li key={j.id} className={`tecnologia tecnologia--${j.color}`}>
+              <span>{j.nombre}</span>
+              <a href={FUENTES[j.id]} target="_blank" rel="noopener noreferrer">
+                Escuchar la canción
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
     </Pagina>
   );

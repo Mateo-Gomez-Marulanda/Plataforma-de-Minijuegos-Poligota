@@ -4,7 +4,7 @@ import Asteroids from '../games/Asteroids.jsx';
 
 export default function JuegoAsteroids() {
   return (
-    <Pagina titulo="Asteroids" volverAJuegos>
+    <Pagina titulo="Asteroids" volverAJuegos musica="asteroids">
       <Asteroids />
     </Pagina>
   );

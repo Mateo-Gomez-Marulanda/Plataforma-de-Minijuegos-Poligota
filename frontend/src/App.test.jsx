@@ -69,6 +69,14 @@ test('Créditos muestra a los dos autores con su imagen debajo del nombre', () =
   expect(nombres).toEqual(['Mateo Gómez Marulanda', 'Ultron (Claude Code)']);
 });
 
+test('Créditos tiene la sección Soundtracks con un enlace por juego', () => {
+  en('/creditos');
+  expect(screen.getByRole('heading', { name: 'Soundtracks' })).toBeTruthy();
+  const enlaces = screen.getAllByRole('link', { name: 'Escuchar la canción' });
+  expect(enlaces).toHaveLength(6);
+  for (const e of enlaces) expect(e.getAttribute('href')).toMatch(/^https:\/\//);
+});
+
 test('si falta una imagen de los créditos se muestra un recuadro con la inicial', () => {
   en('/creditos');
   fireEvent.error(screen.getAllByRole('img')[1]);
@@ -87,3 +95,17 @@ test('Minijuegos y Créditos no muestran el botón «Volver a minijuegos»', () 
   en('/creditos');
   expect(screen.queryByRole('link', { name: 'Volver a minijuegos' })).toBeNull();
 });
+
+test.each(['/', '/juegos', '/creditos', '/juegos/sudoku', '/juegos/tetris', '/juegos/blackjack'])('la pantalla %s tiene el botón de música', (ruta) => {
+  en(ruta);
+  expect(screen.getByRole('button', { name: /^Música: desactivada/ })).toBeTruthy();
+});
+
+test('el botón de música cambia de estado al pulsarlo', () => {
+  localStorage.clear();
+  en('/');
+  fireEvent.click(screen.getByRole('button', { name: /^Música/ }));
+  expect(screen.getByRole('button', { name: /^Música: activada/ })).toBeTruthy();
+  localStorage.clear();
+});
+

@@ -4,7 +4,7 @@ import Sudoku from '../games/Sudoku.jsx';
 
 export default function JuegoSudoku() {
   return (
-    <Pagina titulo="Sudoku" volverAJuegos>
+    <Pagina titulo="Sudoku" volverAJuegos musica="sudoku">
       <Sudoku />
     </Pagina>
   );

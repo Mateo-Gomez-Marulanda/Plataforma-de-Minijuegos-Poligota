@@ -314,6 +314,31 @@ a:focus-visible {
   border-radius: 0.3rem;
 }
 
+.soundtracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.soundtracks li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.soundtracks span {
+  color: var(--papel-tenue);
+  font-size: 0.95rem;
+}
+
+.soundtracks a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
 .tecnologia--amarillo { border-left-color: var(--amarillo); }
 .tecnologia--coral { border-left-color: var(--coral); }
 .tecnologia--violeta { border-left-color: var(--violeta); }
@@ -742,6 +767,12 @@ a:focus-visible {
 .asteroids__combo--sube,
 .asteroids__vidas--sube { animation: pulso 0.25s ease-out; }
 
+.asteroids__datos dt.asteroids__corazon {
+  color: var(--coral);
+  font-size: 3rem; /* el doble que antes */
+  line-height: 1;
+}
+
 .asteroids__vida-extra { color: var(--verde); font-weight: 700; }
 
 @keyframes pulso {
@@ -767,12 +798,6 @@ a:focus-visible {
 }
 
 /* ---------- Blackjack ---------- */
-.asteroids__datos dt.asteroids__corazon {
-  color: var(--coral);
-  font-size: 3rem; /* el doble que antes */
-  line-height: 1;
-}
-
 
 .blackjack {
   display: flex;
@@ -1027,3 +1052,31 @@ a:focus-visible {
   .tetris__lineas { animation: none; }
   .boton { transition: none; }
 }
+
+/* ---------- Botón de música (flotante, en todas las pantallas) ---------- */
+
+.boton-musica {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--papel-tenue);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--papel-tenue);
+  font: 600 0.95rem var(--fuente-texto);
+  cursor: pointer;
+}
+
+.boton-musica:hover { border-color: var(--papel); color: var(--papel); }
+
+.boton-musica--activa { border-color: var(--verde); color: var(--papel); }
+
+/* Apagada: la nota va tachada */
+.boton-musica__nota { text-decoration: line-through; }
+.boton-musica--activa .boton-musica__nota { text-decoration: none; color: var(--verde); }
+
