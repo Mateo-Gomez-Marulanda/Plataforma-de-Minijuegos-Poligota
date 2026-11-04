@@ -74,3 +74,16 @@ test('si falta una imagen de los créditos se muestra un recuadro con la inicial
   fireEvent.error(screen.getAllByRole('img')[1]);
   expect(screen.getByRole('img', { name: 'Imagen de Ultron (Claude Code)' }).textContent).toBe('U');
 });
+
+test.each(['sudoku', 'buscaminas', 'snake', 'tetris', 'asteroids', 'blackjack'])('la pantalla de %s tiene el botón «Volver a minijuegos»', (juego) => {
+  en(`/juegos/${juego}`);
+  expect(screen.getByRole('link', { name: 'Volver a minijuegos' }).getAttribute('href')).toBe('/juegos');
+});
+
+test('Minijuegos y Créditos no muestran el botón «Volver a minijuegos»', () => {
+  en('/juegos');
+  expect(screen.queryByRole('link', { name: 'Volver a minijuegos' })).toBeNull();
+  cleanup();
+  en('/creditos');
+  expect(screen.queryByRole('link', { name: 'Volver a minijuegos' })).toBeNull();
+});

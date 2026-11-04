@@ -4,7 +4,7 @@ import Snake from '../games/Snake.jsx';
 
 export default function JuegoSnake() {
   return (
-    <Pagina titulo="Snake">
+    <Pagina titulo="Snake" volverAJuegos>
       <Snake />
     </Pagina>
   );

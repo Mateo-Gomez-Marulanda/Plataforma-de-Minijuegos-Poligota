@@ -180,6 +180,14 @@ a:focus-visible {
   gap: 0.2rem;
 }
 
+.cabecera-interior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .titulo-interior {
   margin: 2.5rem 0 2rem;
   font-family: var(--fuente-titulo);
@@ -519,13 +527,14 @@ a:focus-visible {
 /* ---------- Tetris ---------- */
 
 .tetris {
-  /* Ancho del tablero 10x20: como mucho 22rem, o menos si la ventana es baja (el alto es el doble del ancho) */
-  --ancho: min(22rem, max(12rem, calc((100vh - 16rem) / 2)));
+  /* Ancho del tablero 10x20: como mucho 26,4 rem (un 20 % más que antes), o menos si la ventana es baja (el alto es el doble del ancho) */
+  --ancho: min(26.4rem, max(14.4rem, calc((100vh - 16rem) * 0.6)));
   display: grid;
   grid-template-columns: var(--ancho) minmax(13rem, 18rem);
   gap: 2.5rem;
   align-items: start;
   justify-content: start;
+  margin-left: 10%; /* desplazado hacia el centro de la página */
 }
 
 .tetris__tablero {
@@ -714,6 +723,11 @@ a:focus-visible {
 }
 
 .blackjack p { margin: 0; }
+
+/* En ordenador toda la mesa se ve un 20 % más grande (cartas, texto y botones). */
+@media (min-width: 52rem) and (pointer: fine) {
+  .blackjack { zoom: 1.2; }
+}
 
 .blackjack__barra {
   display: flex;
@@ -940,6 +954,8 @@ a:focus-visible {
   .snake,
   .tetris,
   .asteroids { grid-template-columns: 1fr; }
+
+  .tetris { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

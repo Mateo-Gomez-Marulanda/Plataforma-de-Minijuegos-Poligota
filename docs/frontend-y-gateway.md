@@ -109,6 +109,8 @@ frontend/src/
 
 La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de escenario dentro de la misma web.
 
+Todas las pantallas de juego llevan, junto a «Volver al inicio», el botón «Volver a minijuegos», que lleva a `/juegos`. Lo añade el marco `Pagina` cuando la pantalla le pasa `volverAJuegos`.
+
 ### Cómo habla con el backend
 
 **El navegador solo habla con su propio origen.** Las rutas son relativas (`/api/sudoku/...`, `/ws/snake`), sin ninguna dirección fija. El servidor de desarrollo de Vite las reenvía al gateway según `vite.config.js`:

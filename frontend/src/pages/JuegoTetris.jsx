@@ -4,7 +4,7 @@ import Tetris from '../games/Tetris.jsx';
 
 export default function JuegoTetris() {
   return (
-    <Pagina titulo="Tetris">
+    <Pagina titulo="Tetris" volverAJuegos>
       <Tetris />
     </Pagina>
   );

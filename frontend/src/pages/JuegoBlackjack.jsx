@@ -4,7 +4,7 @@ import Blackjack from '../games/Blackjack.jsx';
 
 export default function JuegoBlackjack() {
   return (
-    <Pagina titulo="Blackjack">
+    <Pagina titulo="Blackjack" volverAJuegos>
       <Blackjack />
     </Pagina>
   );
