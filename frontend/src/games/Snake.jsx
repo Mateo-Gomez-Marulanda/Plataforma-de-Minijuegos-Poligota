@@ -2,6 +2,7 @@
 // El servidor lleva el reloj y las reglas; aquí solo se renderiza cada mensaje `state` que llega.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { conectarSnake } from '../api/snake.js';
+import { BotonPausa, useTeclasPausa } from './pausa.jsx';
 
 // Tecla del teclado -> dirección del contrato.
 const TECLAS = {
@@ -76,13 +77,15 @@ export default function Snake() {
     else conexion.current?.pausar();
   }, [pausado]);
 
-  // Teclado: flechas o WASD giran; la barra espaciadora pausa. Se escucha en toda la página.
+  // Pausa: P, Esc o el botón (igual en todos los juegos).
+  useTeclasPausa(jugando, alternarPausa);
+
+  // Teclado: flechas o WASD giran. Se escucha en toda la página.
   useEffect(() => {
     if (!jugando) return undefined;
     const alPulsar = (e) => {
-      if (e.key === ' ') alternarPausa();
-      else if (TECLAS[e.key] && !pausado) conexion.current?.girar(TECLAS[e.key]);
-      else return;
+      if (!TECLAS[e.key]) return;
+      if (!pausado) conexion.current?.girar(TECLAS[e.key]);
       e.preventDefault(); // evita que las flechas desplacen la página
     };
     window.addEventListener('keydown', alPulsar);
@@ -122,7 +125,7 @@ export default function Snake() {
         </p>
 
         {fase === 'conectando' && <p role="status">Conectando…</p>}
-        {fase === 'listo' && <p>Usa las flechas o W, A, S, D para mover la serpiente. La barra espaciadora pausa.</p>}
+        {fase === 'listo' && <p>Usa las flechas o W, A, S, D para mover la serpiente. P o Esc para pausar.</p>}
         {pausado && <p role="status">En pausa</p>}
         {fase === 'terminado' && (
           <p className={fin.result === 'won' ? 'snake__victoria' : 'snake__derrota'} role="status">
@@ -136,11 +139,7 @@ export default function Snake() {
             {fase === 'terminado' ? 'Jugar de nuevo' : 'Jugar'}
           </button>
         )}
-        {jugando && (
-          <button className="boton" onClick={alternarPausa}>
-            {pausado ? 'Reanudar' : 'Pausar'}
-          </button>
-        )}
+        {jugando && <BotonPausa pausado={pausado} onClick={alternarPausa} />}
 
         {/* Cruceta para pantallas táctiles */}
         <div className="snake__cruceta" role="group" aria-label="Dirección">

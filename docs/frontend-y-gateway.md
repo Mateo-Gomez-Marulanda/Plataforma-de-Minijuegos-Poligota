@@ -98,6 +98,11 @@ frontend/src/
 └── styles.css
 ```
 
+### Pausa y cronómetro compartidos
+
+- **Pausa (`games/pausa.jsx`).** Snake, Tetris y Asteroids usan el mismo hook `useTeclasPausa` y el mismo botón `BotonPausa`: la partida se pausa y se reanuda **solo** con la tecla P, la tecla Esc o el botón visual. Ninguna otra tecla pausa (la barra espaciadora ya no pausa en Snake). El servidor sigue siendo quien detiene el reloj; el cliente solo envía `pause` y `resume`.
+- **Cronómetro (`games/cronometro.jsx`).** Sudoku y Buscaminas muestran cuánto tiempo lleva el jugador en la partida. Cuenta desde que se crea la partida, se detiene con el tiempo final al ganar, **vuelve a cero al perder** (Buscaminas) y empieza de cero en cada partida nueva. Vive solo en el navegador: al cerrar o recargar la página se pierde.
+
 ### Las pantallas
 
 | Ruta | Contenido |

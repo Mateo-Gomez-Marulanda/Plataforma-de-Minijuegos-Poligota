@@ -21,18 +21,23 @@ public static class Game
     }
 
     /// <summary>Aplica una acción del jugador. Si la partida terminó, no cambia nada.</summary>
-    public static GameState Apply(GameState state, PlayerAction action) =>
-        state.Status == GameStatus.GameOver
-            ? state
-            : action switch
-            {
-                PlayerAction.Left => Shift(state, 0, -1),
-                PlayerAction.Right => Shift(state, 0, 1),
-                PlayerAction.Rotate => Rotate(state),
-                PlayerAction.SoftDrop => SoftDrop(state),
-                PlayerAction.HardDrop => HardDrop(state),
-                _ => state,
-            };
+    public static GameState Apply(GameState state, PlayerAction action)
+    {
+        if (state.Status == GameStatus.GameOver)
+        {
+            return state;
+        }
+        var limpio = state with { LastCleared = 0 }; // la limpieza de líneas solo cuenta en la acción que la provoca
+        return action switch
+        {
+            PlayerAction.Left => Shift(limpio, 0, -1),
+            PlayerAction.Right => Shift(limpio, 0, 1),
+            PlayerAction.Rotate => Rotate(limpio),
+            PlayerAction.SoftDrop => SoftDrop(limpio),
+            PlayerAction.HardDrop => HardDrop(limpio),
+            _ => limpio,
+        };
+    }
 
     /// <summary>Gravedad: la pieza baja una fila; si no puede, se fija y aparece la siguiente.</summary>
     public static GameState Tick(GameState state)
@@ -41,8 +46,9 @@ public static class Game
         {
             return state;
         }
-        var abajo = state.Current.Moved(1, 0);
-        return Fits(state.Board, abajo) ? state with { Current = abajo } : Lock(state);
+        var limpio = state with { LastCleared = 0 };
+        var abajo = limpio.Current.Moved(1, 0);
+        return Fits(limpio.Board, abajo) ? limpio with { Current = abajo } : Lock(limpio);
     }
 
     /// <summary>Indica si la partida terminó: devuelve el motivo ("top_out") o null si sigue.</summary>
@@ -140,7 +146,7 @@ public static class Game
     {
         var (tablero, limpiadas) = state.Board.Place(state.Current.Cells, (byte)state.Current.Type).ClearLines();
         int puntos = PuntosPorLineas[limpiadas] * state.Level;
-        return SpawnNext(state with { Board = tablero, Score = state.Score + puntos, Lines = state.Lines + limpiadas });
+        return SpawnNext(state with { Board = tablero, Score = state.Score + puntos, Lines = state.Lines + limpiadas, LastCleared = limpiadas });
     }
 
     // Toma la siguiente pieza de la cola (rellenándola con otra bolsa si hace falta). Si no cabe al aparecer, fin de la partida.

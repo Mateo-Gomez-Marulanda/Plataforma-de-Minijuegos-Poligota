@@ -79,7 +79,7 @@ public static class MessageWriter
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    private sealed record StateMessage(string Type, int Tick, string Status, int[][] Board, StateData Data);
+    private sealed record StateMessage(string Type, int Tick, string Status, int[][] Board, StateData Data, string[] Events);
 
     private sealed record StateData(int Score, int Level, int Lines, string Next, bool Paused, int IntervalMs);
 
@@ -89,12 +89,24 @@ public static class MessageWriter
 
     private sealed record ErrorMessage(string Type, string Error, string Message);
 
-    /// <summary>Mensaje `state`: tablero y datos de la partida.</summary>
-    public static string State(int tick, GameState game, bool paused, int intervalMs) =>
+    /// <summary>
+    /// Mensaje `state`: tablero y datos de la partida. Con `withEvents` incluye lo ocurrido en este paso
+    /// (limpieza de líneas); se desactiva al reenviar el mismo estado, por ejemplo al pausar.
+    /// </summary>
+    public static string State(int tick, GameState game, bool paused, int intervalMs, bool withEvents = true) =>
         JsonSerializer.Serialize(
             new StateMessage("state", tick, "playing", Game.ToMatrix(game),
-                new StateData(game.Score, game.Level, game.Lines, game.Next.ToString(), paused, intervalMs)),
+                new StateData(game.Score, game.Level, game.Lines, game.Next.ToString(), paused, intervalMs),
+                withEvents ? EventsFor(game.LastCleared) : []),
             Options);
+
+    /// <summary>Eventos de una limpieza: `lines_1`, `lines_2`, `lines_3` o `tetris` (4 o más líneas a la vez).</summary>
+    public static string[] EventsFor(int cleared) => cleared switch
+    {
+        <= 0 => [],
+        >= 4 => ["tetris"],
+        _ => [$"lines_{cleared}"],
+    };
 
     /// <summary>Mensaje `game_over` con el resultado final.</summary>
     public static string GameOver(int tick, GameState game) =>

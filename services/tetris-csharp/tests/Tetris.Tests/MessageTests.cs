@@ -61,6 +61,34 @@ public class MessageTests
         Assert.Contains(datos.GetProperty("next").GetString(), Enum.GetNames<Tetromino>());
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1, "lines_1")]
+    [InlineData(2, "lines_2")]
+    [InlineData(3, "lines_3")]
+    [InlineData(4, "tetris")]
+    [InlineData(5, "tetris")]
+    public void LasLineasLimpiadasSeInformanComoEventos(int limpiadas, params string[] esperados) =>
+        Assert.Equal(esperados, MessageWriter.EventsFor(limpiadas));
+
+    [Fact]
+    public void ElMensajeStateIncluyeLosEventosDeLaUltimaLimpieza()
+    {
+        var game = Game.NewGame(1) with { LastCleared = 4 };
+        var json = JsonDocument.Parse(MessageWriter.State(1, game, paused: false, intervalMs: 1000)).RootElement;
+        Assert.Equal(["tetris"], json.GetProperty("events").EnumerateArray().Select(e => e.GetString()));
+    }
+
+    [Fact]
+    public void SinLimpiezaOAlReenviarElMismoEstadoLosEventosVanVacios()
+    {
+        var game = Game.NewGame(1) with { LastCleared = 2 };
+        var sin = JsonDocument.Parse(MessageWriter.State(1, Game.NewGame(1), paused: false, intervalMs: 1000)).RootElement;
+        var reenvio = JsonDocument.Parse(MessageWriter.State(1, game, paused: true, intervalMs: 1000, withEvents: false)).RootElement;
+        Assert.Equal(0, sin.GetProperty("events").GetArrayLength());
+        Assert.Equal(0, reenvio.GetProperty("events").GetArrayLength());
+    }
+
     [Fact]
     public void GameOverYErrorSiguenElContrato()
     {

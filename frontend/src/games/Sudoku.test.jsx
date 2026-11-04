@@ -1,5 +1,6 @@
 // Pruebas del componente Sudoku con un servidor simulado (fetch falso): carga, jugadas, conflictos, victoria y errores.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { act } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Sudoku from './Sudoku.jsx';
 
@@ -110,4 +111,60 @@ test('un 422 del servidor se muestra sin perder el tablero', async () => {
   fireEvent.click(screen.getByRole('button', { name: '3' }));
   expect((await screen.findByRole('alert')).textContent).toBe('Jugada inválida');
   expect(screen.getAllByRole('button', { name: /^Fila/ })).toHaveLength(81);
+});
+
+// ---- Cronómetro ----
+
+const tiempo = () => screen.getByLabelText('Tiempo de partida').textContent;
+// Avanza el reloj simulado. Antes deja que React ejecute los efectos pendientes (con relojes simulados tardan en correr),
+// para que el cronómetro ya haya empezado a contar cuando pasa el tiempo.
+const pasar = async (ms) => {
+  await act(async () => {});
+  act(() => vi.advanceTimersByTime(ms));
+};
+
+test('el cronómetro empieza en 00:00 y cuenta el tiempo de partida', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Sudoku />);
+    await screen.findByRole('button', { name: /^Fila 1, columna 1/ });
+    expect(tiempo()).toBe('00:00');
+    await pasar(125000);
+    expect(tiempo()).toBe('02:05');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('al resolver el sudoku el cronómetro se detiene con el tiempo final', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Sudoku />);
+    const celda = await screen.findByRole('button', { name: 'Fila 1, columna 2, vacía' });
+    await pasar(45000);
+    fetchFalso.mockImplementationOnce(() => json(estado({ status: 'won' })));
+    fireEvent.click(celda);
+    fireEvent.click(screen.getByRole('button', { name: '5' }));
+    await screen.findByText('¡Sudoku resuelto!');
+    expect(tiempo()).toBe('00:45');
+    await pasar(30000);
+    expect(tiempo()).toBe('00:45');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('cambiar la dificultad o crear otra partida reinicia el cronómetro', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Sudoku />);
+    await screen.findByRole('button', { name: /^Fila 1, columna 1/ });
+    await pasar(70000);
+    expect(tiempo()).toBe('01:10');
+    fireEvent.click(screen.getByRole('button', { name: 'Difícil' }));
+    await waitFor(() => expect(llamadas('POST', '/games')).toHaveLength(2));
+    await waitFor(() => expect(tiempo()).toBe('00:00'));
+  } finally {
+    vi.useRealTimers();
+  }
 });

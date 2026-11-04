@@ -129,6 +129,8 @@ La solución es que **solo un bucle toque el estado y envíe mensajes**:
 
 `Messages.cs` es el único lugar que conoce el JSON. Los mensajes del cliente se interpretan con `JsonDocument` y se convierten en una jerarquía de *records* (`StartMessage`, `InputMessage`, `PauseMessage`...); `GameSession.HandleAsync` los distingue con un `switch` con *pattern matching*. Los mensajes del servidor se serializan con `System.Text.Json` y la política `SnakeCaseLower`, de modo que `IntervalMs` sale como `interval_ms`.
 
+Cuando una pieza limpia líneas, el `state` incluye en `events` el aviso correspondiente (`lines_1`, `lines_2`, `lines_3` o `tetris`). La lógica lo guarda en `GameState.LastCleared`: `Apply` y `Tick` lo ponen a cero al empezar y `Lock` lo fija con las líneas limpiadas, de modo que solo vale en el paso que las provoca. `MessageWriter.EventsFor` lo traduce al nombre del evento, y la sesión reenvía el estado sin eventos al pausar o reanudar para no repetirlo.
+
 Los mensajes inválidos nunca lanzan excepciones: se convierten en un `ProtocolError` y se responde con un `error` (`INVALID_JSON`, `UNKNOWN_TYPE`, `UNKNOWN_KEY` o `NOT_STARTED`).
 
 ### 4.4 Cierre

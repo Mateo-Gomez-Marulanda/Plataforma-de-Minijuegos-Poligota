@@ -308,6 +308,51 @@ func TestOleadaLimpiaGeneraLaSiguiente(t *testing.T) {
 	}
 }
 
+// superarOleada deja la partida en la oleada n con un solo asteroide pequeño y lo destruye.
+func superarOleada(s *State, n int) []Event {
+	s.Wave = n
+	s.Asteroids = nil
+	asteroide(s, Vec{100, 100}, Small)
+	s.Bullets = []Bullet{{Pos: Vec{100, 100}, Life: 1}}
+	return avanzar(s, 1)
+}
+
+func TestVidaExtraCadaCuatroOleadas(t *testing.T) {
+	for _, oleada := range []int{4, 8, 12} {
+		s := vacia()
+		events := superarOleada(s, oleada)
+		if s.Lives != StartLives+1 || !slices.Contains(events, ExtraLife) {
+			t.Fatalf("al superar la oleada %d se gana una vida: vidas %d, eventos %v", oleada, s.Lives, events)
+		}
+		if s.Wave != oleada+1 || !slices.Contains(events, WaveCleared) {
+			t.Fatalf("la oleada %d debe dar paso a la siguiente: oleada %d, eventos %v", oleada, s.Wave, events)
+		}
+	}
+}
+
+func TestNoHayVidaExtraEnLasDemasOleadas(t *testing.T) {
+	for _, oleada := range []int{1, 2, 3, 5, 6, 7, 9} {
+		s := vacia()
+		events := superarOleada(s, oleada)
+		if s.Lives != StartLives || slices.Contains(events, ExtraLife) {
+			t.Fatalf("la oleada %d no da vida extra: vidas %d, eventos %v", oleada, s.Lives, events)
+		}
+	}
+}
+
+func TestLasVidasExtraSeAcumulanSobreLasQueQuedan(t *testing.T) {
+	s := vacia()
+	s.Lives = 1
+	superarOleada(s, 4)
+	if s.Lives != 2 {
+		t.Fatalf("1 vida + extra = 2, hay %d", s.Lives)
+	}
+	superarOleada(s, 8)
+	if s.Lives != 3 {
+		t.Fatalf("2 vidas + extra = 3, hay %d", s.Lives)
+	}
+}
+
 func TestOleadasTienenTope(t *testing.T) {
 	s := vacia()
 	s.Wave = 50

@@ -3,6 +3,7 @@
 // A diferencia de los otros juegos, las teclas se mantienen: se avisa al pulsar (pressed: true) y al soltar (pressed: false).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { conectarAsteroids } from '../api/asteroids.js';
+import { BotonPausa, useTeclasPausa } from './pausa.jsx';
 
 // Tecla del teclado -> tecla del contrato.
 const TECLAS = {
@@ -59,7 +60,8 @@ export default function Asteroids() {
   const [estado, setEstado] = useState(null); // último mensaje `state`
   const [fin, setFin] = useState(null); // datos de `game_over`
   const [error, setError] = useState(null);
-  const [efectos, setEfectos] = useState({ sacudidas: 0, pulsos: 0 }); // contadores que reinician las animaciones
+  const [efectos, setEfectos] = useState({ sacudidas: 0, pulsos: 0, vidas: 0 }); // contadores que reinician las animaciones
+  const [vidaExtra, setVidaExtra] = useState(false); // muestra «¡Vida extra!» un momento
   const conexion = useRef(null);
   const pulsadas = useRef(new Set()); // teclas del contrato que están pulsadas ahora mismo
   const [intento, setIntento] = useState(0); // cambia para reconectar
@@ -83,7 +85,11 @@ export default function Asteroids() {
         const eventos = msg.events ?? [];
         const sacude = eventos.includes('ship_destroyed');
         const pulso = eventos.includes('combo_up');
-        if (sacude || pulso) setEfectos((e) => ({ sacudidas: e.sacudidas + (sacude ? 1 : 0), pulsos: e.pulsos + (pulso ? 1 : 0) }));
+        const vida = eventos.includes('extra_life');
+        if (vida) setVidaExtra(true);
+        if (sacude || pulso || vida) {
+          setEfectos((e) => ({ sacudidas: e.sacudidas + (sacude ? 1 : 0), pulsos: e.pulsos + (pulso ? 1 : 0), vidas: e.vidas + (vida ? 1 : 0) }));
+        }
       },
       onFin: (datos) => activa && (setFin(datos), setFase('terminado')),
       onError: (mensaje) => activa && setError(mensaje),
@@ -98,6 +104,13 @@ export default function Asteroids() {
       conexion.current?.cerrar();
     };
   }, [intento]);
+
+  // El aviso de vida extra desaparece solo.
+  useEffect(() => {
+    if (!vidaExtra) return undefined;
+    const temporizador = setTimeout(() => setVidaExtra(false), 2000);
+    return () => clearTimeout(temporizador);
+  }, [vidaExtra]);
 
   const pausado = estado?.data.paused === true;
   const jugando = fase === 'jugando';
@@ -121,6 +134,7 @@ export default function Asteroids() {
     setFin(null);
     setError(null);
     pulsadas.current.clear();
+    setVidaExtra(false);
     setFase('jugando'); // evita un instante en 'terminado' sin datos de fin
     conexion.current?.empezar();
   };
@@ -132,15 +146,13 @@ export default function Asteroids() {
     else conexion.current?.pausar();
   }, [pausado, soltarTodas]);
 
-  // Teclado en toda la página: flechas o WASD para girar y acelerar, espacio para disparar, P o Esc para pausar.
+  // Pausa: P, Esc o el botón (igual en todos los juegos).
+  useTeclasPausa(jugando, alternarPausa);
+
+  // Teclado en toda la página: flechas o WASD para girar y acelerar, espacio para disparar.
   useEffect(() => {
     if (!jugando) return undefined;
     const alPulsar = (e) => {
-      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-        if (!e.repeat) alternarPausa();
-        e.preventDefault();
-        return;
-      }
       const key = TECLAS[e.key];
       if (!key) return;
       if (!pausado && !e.repeat) mover(key, true);
@@ -159,7 +171,7 @@ export default function Asteroids() {
       window.removeEventListener('blur', soltarTodas);
       soltarTodas();
     };
-  }, [jugando, pausado, mover, soltarTodas, alternarPausa]);
+  }, [jugando, pausado, mover, soltarTodas]);
 
   if (fase === 'error') {
     return (
@@ -197,7 +209,10 @@ export default function Asteroids() {
         <dl className="asteroids__datos">
           <div><dt>Puntaje</dt><dd>{puntaje}</dd></div>
           <div><dt>Oleada</dt><dd>{oleada}</dd></div>
-          <div><dt>Vidas</dt><dd aria-label="Vidas">{datos ? datos.lives : 3}</dd></div>
+          <div>
+            <dt>Vidas</dt>
+            <dd key={efectos.vidas} aria-label="Vidas" className={efectos.vidas > 0 ? 'asteroids__vidas--sube' : undefined}>{datos ? datos.lives : 3}</dd>
+          </div>
           <div>
             <dt>Combo</dt>
             <dd key={efectos.pulsos} className={`asteroids__combo${efectos.pulsos > 0 ? ' asteroids__combo--sube' : ''}`}>x{datos?.combo ?? 1}</dd>
@@ -207,6 +222,7 @@ export default function Asteroids() {
         {fase === 'conectando' && <p role="status">Conectando…</p>}
         {fase === 'listo' && <p>Flechas o W, A, D para girar y acelerar. Espacio para disparar. P o Esc para pausar.</p>}
         {pausado && <p role="status">En pausa</p>}
+        {vidaExtra && <p className="asteroids__vida-extra" role="status">¡Vida extra!</p>}
         {fase === 'terminado' && <p className="snake__derrota" role="status">Te quedaste sin vidas.</p>}
         {error && <p className="snake__error" role="alert">{error}</p>}
 
@@ -215,11 +231,7 @@ export default function Asteroids() {
             {fase === 'terminado' ? 'Jugar de nuevo' : 'Jugar'}
           </button>
         )}
-        {jugando && (
-          <button className="boton" onClick={alternarPausa}>
-            {pausado ? 'Reanudar' : 'Pausar'}
-          </button>
-        )}
+        {jugando && <BotonPausa pausado={pausado} onClick={alternarPausa} />}
 
         {/* Controles para pantallas táctiles: mantener pulsado = tecla mantenida */}
         <div className="asteroids__cruceta" role="group" aria-label="Controles">

@@ -316,7 +316,7 @@ Todos los servicios respetan el mismo formato de mensajes, de modo que el fronte
 { "type": "error", "error": "UNKNOWN_KEY", "message": "Tecla no reconocida" }
 ```
 
-Dos campos son opcionales y los servicios que no los usan (Snake, Tetris) los ignoran u omiten:
+Dos campos son opcionales y los servicios que no los usan (Snake) los ignoran u omiten:
 
 - `pressed` (en `input`): `true` al presionar la tecla y `false` al soltarla. Permite teclas mantenidas, como rotar o acelerar en Asteroids. Si se omite, el `input` es una pulsación única.
 - `events` (en `state`): lista de lo ocurrido desde el último envío. El frontend la usa solo para efectos visuales y de sonido.
@@ -513,6 +513,8 @@ Piezas de cuatro bloques (*tetrominós*: I, O, T, S, Z, J, L) caen desde la part
 
 `state.data` incluye `score`, `level`, `lines`, `next` (letra de la pieza siguiente), `paused` e `interval_ms` (milisegundos entre ticks de gravedad). Además del tick, el servidor envía un `state` inmediatamente después de cada tecla. `game_over.data` incluye `score`, `level`, `lines`, `reason` (`top_out`) y `tick`. Si el cliente envía `options.seed` en `start`, las piezas salen en un orden reproducible (se usa en las pruebas).
 
+**Aviso de líneas (combo).** Como en Asteroids, el `state` lleva `events` con lo ocurrido en ese paso. Cuando una pieza limpia líneas, el evento es `lines_1`, `lines_2` o `lines_3` según cuántas se limpiaron a la vez, o `tetris` si fueron 4. El frontend muestra sobre el tablero «x1», «x2», «x3» o «TETRIS» durante poco más de un segundo. Es solo un efecto visual: el puntaje sigue siendo el de siempre. Al pausar o reanudar se reenvía el mismo estado con `events` vacío, para que el aviso no se repita.
+
 **Puntaje:** 100, 300, 500 y 800 por 1, 2, 3 y 4 líneas a la vez (multiplicado por el nivel), 1 punto por fila en caída suave y 2 por fila en caída rápida. El nivel sube cada 10 líneas y la gravedad parte de 1 s por fila.
 
 #### Por qué C\#
@@ -562,6 +564,7 @@ El jugador controla una nave en el centro de un espacio lleno de asteroides. La 
 - **Puntaje**: los asteroides pequeños valen más que los grandes (por ejemplo, 20, 50 y 100 puntos), multiplicados por el combo actual.  
 - **Oleadas**: cada oleada genera más asteroides grandes, siempre lejos de la nave.  
 - **Vidas e invulnerabilidad**: la nave tiene 3 vidas. Al reaparecer es invulnerable durante 2 segundos.  
+- **Vida extra**: al superar la oleada 4, la 8, la 12... (cada 4 oleadas) se gana una vida más. No hay tope de vidas.  
 - **Aleatoriedad reproducible**: el generador aleatorio usa una semilla almacenada en el estado, para que una partida pueda reproducirse exactamente en las pruebas.
 
 **Teclas:** `rotate_left`, `rotate_right`, `thrust`, `fire`
@@ -598,7 +601,7 @@ Asteroids introduce dos diferencias respecto a los demás juegos en tiempo real:
 }
 ```
 
-El campo `events` lista lo que ocurrió desde el último envío. El frontend lo usa exclusivamente para efectos visuales y de sonido (explosiones, temblor de pantalla, animación del multiplicador). Eventos posibles: `asteroid_destroyed`, `combo_up`, `combo_lost`, `ship_destroyed`, `wave_cleared`, `game_over`.
+El campo `events` lista lo que ocurrió desde el último envío. El frontend lo usa exclusivamente para efectos visuales y de sonido (explosiones, temblor de pantalla, animación del multiplicador). Eventos posibles: `asteroid_destroyed`, `combo_up`, `combo_lost`, `ship_destroyed`, `wave_cleared`, `extra_life`, `game_over`.
 
 #### Diseño del bucle de juego
 

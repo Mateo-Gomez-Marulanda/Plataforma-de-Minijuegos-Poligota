@@ -33,10 +33,11 @@ const (
 
 // Parámetros del combo, las oleadas y los asteroides.
 const (
-	ComboWindow  = 2.0 // s para encadenar otra destrucción
-	MaxCombo     = 8
-	SafeDistance = 150.0 // distancia mínima a la nave al generar una oleada
-	MaxLarge     = 10    // tope de asteroides grandes por oleada
+	ComboWindow    = 2.0 // s para encadenar otra destrucción
+	MaxCombo       = 8
+	SafeDistance   = 150.0 // distancia mínima a la nave al generar una oleada
+	MaxLarge       = 10    // tope de asteroides grandes por oleada
+	ExtraLifeEvery = 4     // cada cuántas oleadas superadas se gana una vida extra
 )
 
 // Size es el tamaño de un asteroide.
@@ -116,6 +117,7 @@ const (
 	ComboLost         Event = "combo_lost"
 	ShipDestroyed     Event = "ship_destroyed"
 	WaveCleared       Event = "wave_cleared"
+	ExtraLife         Event = "extra_life"
 	GameOver          Event = "game_over"
 )
 
@@ -207,9 +209,13 @@ func (s *State) Tick() []Event {
 	s.resolveBullets(&events)
 	s.resolveShip(&events)
 	if !s.Over && len(s.Asteroids) == 0 {
+		events = append(events, WaveCleared)
+		if s.Wave%ExtraLifeEvery == 0 { // al superar la oleada 4, la 8, la 12...
+			s.Lives++
+			events = append(events, ExtraLife)
+		}
 		s.Wave++
 		s.spawnWave()
-		events = append(events, WaveCleared)
 	}
 	return events
 }

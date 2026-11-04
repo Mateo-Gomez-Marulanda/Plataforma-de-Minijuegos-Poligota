@@ -3,6 +3,7 @@
 // Las reglas (primer clic seguro, apertura en cadena, victoria) las lleva el servidor.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { borrarPartida, crearPartida, jugar } from '../api/buscaminas.js';
+import { Cronometro, useCronometro } from './cronometro.jsx';
 
 const NIVELES = [
   { id: 'facil', nombre: 'Fácil', filas: 9, columnas: 9, minas: 10 },
@@ -70,6 +71,7 @@ export default function Buscaminas() {
   }, [iniciar]);
 
   const jugando = juego?.status === 'playing';
+  const tiempo = useCronometro(jugando, juego?.id); // cuenta mientras se juega; al ganar se queda con el tiempo final
 
   // Envía una jugada al servidor y muestra el estado que devuelve.
   const enviar = async (accion) => {
@@ -137,6 +139,7 @@ export default function Buscaminas() {
           <span>Minas</span>
           <strong aria-label="Minas restantes">{juego.data.mines_remaining}</strong>
         </p>
+        <Cronometro ms={juego.status === 'lost' ? 0 : tiempo} /> {/* al perder vuelve a cero */}
         <button className="opcion buscaminas__modo" aria-pressed={modoBandera} onClick={() => setModoBandera((m) => !m)}>
           Modo bandera
         </button>

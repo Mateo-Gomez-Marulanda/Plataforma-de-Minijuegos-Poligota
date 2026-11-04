@@ -59,6 +59,7 @@ A diferencia de Elixir y C#, aquí `State` se modifica en sitio: `Tick()` cambia
 - **Puntaje y combo:** 20, 50 y 100 puntos por grande, mediano y pequeño, multiplicados por el combo actual. Cada destrucción sube el combo (tope x8) y reinicia un temporizador de 2 s; si se agota, vuelve a x1. Perder una vida también reinicia el combo.
 - **Oleadas:** la oleada *n* trae `3 + n` asteroides grandes (máximo 10), siempre a más de 190 unidades de la nave. Al destruir el último comienza la siguiente.
 - **Vidas:** 3. Al perder una, la nave reaparece quieta en el centro y es invulnerable 2 s (el cliente la dibuja parpadeando). Sin vidas, la partida termina.
+- **Vida extra:** al superar la oleada 4, la 8, la 12... (`ExtraLifeEvery = 4`) se gana una vida más y el tick emite el evento `extra_life` junto a `wave_cleared`. No hay tope de vidas.
 - **Aleatoriedad reproducible:** `State` guarda su propio generador `rand.PCG` sembrado con `options.seed`. Con la misma semilla y las mismas teclas, la partida es idéntica (hay una prueba que lo comprueba).
 
 ### 3.4 Teclas mantenidas

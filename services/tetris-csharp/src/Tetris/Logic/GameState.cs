@@ -13,6 +13,7 @@ public enum GameStatus { Playing, GameOver }
 /// Partida en un instante: tablero fijado, pieza activa, piezas por venir, generador aleatorio y puntuación.
 /// Las funciones de <see cref="Game"/> reciben un estado y devuelven otro; este nunca se modifica.
 /// </summary>
+/// <param name="LastCleared">Líneas que limpió la última acción o tick (0 si ninguna): el servidor lo informa como evento.</param>
 public sealed record GameState(
     Board Board,
     Piece Current,
@@ -20,7 +21,8 @@ public sealed record GameState(
     Rng Rng,
     int Score,
     int Lines,
-    GameStatus Status)
+    GameStatus Status,
+    int LastCleared = 0)
 {
     /// <summary>Nivel actual: sube uno cada 10 líneas.</summary>
     public int Level => 1 + Lines / 10;

@@ -1,5 +1,6 @@
 // Pruebas del componente Buscaminas con un servidor simulado (fetch falso): carga, jugadas, banderas, fin de partida y errores.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { act } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Buscaminas from './Buscaminas.jsx';
 
@@ -144,4 +145,79 @@ test('un 422 del servidor se muestra sin perder el tablero', async () => {
   fireEvent.click(casilla(3, 3));
   expect((await screen.findByRole('alert')).textContent).toBe('Jugada inválida');
   expect(document.querySelectorAll('.casilla')).toHaveLength(81);
+});
+
+// ---- Cronómetro ----
+
+// Texto del cronómetro; `pasar` avanza el reloj simulado (el tiempo real sigue corriendo, así que `waitFor` funciona).
+const tiempo = () => screen.getByLabelText('Tiempo de partida').textContent;
+// Avanza el reloj simulado. Antes deja que React ejecute los efectos pendientes (con relojes simulados tardan en correr),
+// para que el cronómetro ya haya empezado a contar cuando pasa el tiempo.
+const pasar = async (ms) => {
+  await act(async () => {});
+  act(() => vi.advanceTimersByTime(ms));
+};
+
+test('el cronómetro empieza en 00:00 y cuenta el tiempo de partida', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Buscaminas />);
+    await waitFor(() => expect(casilla(1, 1)).toBeTruthy());
+    expect(tiempo()).toBe('00:00');
+    await pasar(65000);
+    expect(tiempo()).toBe('01:05');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('al ganar el cronómetro se detiene con el tiempo final', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Buscaminas />);
+    await waitFor(() => expect(casilla(1, 1)).toBeTruthy());
+    await pasar(30000);
+    fetchFalso.mockImplementationOnce(() => json(estado({ status: 'won', cambios: { '0,0': 0 } })));
+    fireEvent.click(casilla(1, 1));
+    await screen.findByText('¡Despejaste el tablero!');
+    const final = tiempo();
+    expect(final).toBe('00:30');
+    await pasar(20000);
+    expect(tiempo()).toBe(final);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('al perder el cronómetro vuelve a cero', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Buscaminas />);
+    await waitFor(() => expect(casilla(1, 1)).toBeTruthy());
+    await pasar(40000);
+    expect(tiempo()).toBe('00:40');
+    fetchFalso.mockImplementationOnce(() => json(estado({ status: 'lost', cambios: { '0,0': 10 } })));
+    fireEvent.click(casilla(1, 1));
+    await screen.findByText('Pisaste una mina.');
+    expect(tiempo()).toBe('00:00');
+    await pasar(20000);
+    expect(tiempo()).toBe('00:00');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('una partida nueva reinicia el cronómetro', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    render(<Buscaminas />);
+    await waitFor(() => expect(casilla(1, 1)).toBeTruthy());
+    await pasar(50000);
+    expect(tiempo()).toBe('00:50');
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva partida' }));
+    await waitFor(() => expect(llamadas('POST', '/games')).toHaveLength(2));
+    await waitFor(() => expect(tiempo()).toBe('00:00'));
+  } finally {
+    vi.useRealTimers();
+  }
 });

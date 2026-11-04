@@ -85,18 +85,19 @@ public sealed class GameSession(Func<string, CancellationToken, Task> send, ITic
                 break;
             case PauseMessage when !_paused:
                 _paused = true;
-                await PublishAsync(ct);
+                await PublishAsync(ct, withEvents: false);
                 break;
             case ResumeMessage when _paused:
                 _paused = false;
                 ScheduleTick();
-                await PublishAsync(ct);
+                await PublishAsync(ct, withEvents: false);
                 break;
         }
     }
 
     // Envía el estado actual o, si la partida terminó, `game_over` (y deja la sesión sin partida).
-    private async Task PublishAsync(CancellationToken ct)
+    // `withEvents` es falso al reenviar un estado que no cambió (pausa y reanudación): así no se repite un evento ya enviado.
+    private async Task PublishAsync(CancellationToken ct, bool withEvents = true)
     {
         var game = _game!;
         if (Game.IsOver(game) is not null)
@@ -106,7 +107,7 @@ public sealed class GameSession(Func<string, CancellationToken, Task> send, ITic
         }
         else
         {
-            await send(MessageWriter.State(_tick, game, _paused, (int)policy.Interval(game).TotalMilliseconds), ct);
+            await send(MessageWriter.State(_tick, game, _paused, (int)policy.Interval(game).TotalMilliseconds, withEvents), ct);
         }
     }
 }

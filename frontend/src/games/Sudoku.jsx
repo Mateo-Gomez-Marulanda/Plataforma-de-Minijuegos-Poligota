@@ -2,6 +2,7 @@
 // No valida nada: si una jugada es inválida o genera conflictos, es el servidor quien lo dice.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { borrarPartida, crearPartida, mover } from '../api/sudoku.js';
+import { Cronometro, useCronometro } from './cronometro.jsx';
 
 const DIFICULTADES = [
   { id: 'easy', nombre: 'Fácil' },
@@ -56,6 +57,7 @@ export default function Sudoku() {
   }, [seleccion]);
 
   const jugando = juego?.status === 'playing';
+  const tiempo = useCronometro(jugando, juego?.id); // cuenta mientras se juega; al resolverlo se queda con el tiempo final
   const pista = (f, c) => juego.data.givens[f][c];
 
   // Envía una jugada al servidor y muestra el estado que devuelve.
@@ -167,6 +169,7 @@ export default function Sudoku() {
           </button>
         </div>
 
+        <Cronometro ms={tiempo} />
         <p className="sudoku__datos">Celdas vacías: {juego.data.remaining}</p>
         {juego.status === 'won' && <p className="sudoku__victoria" role="status">¡Sudoku resuelto!</p>}
         {error && <p className="sudoku__error" role="alert">{error}</p>}

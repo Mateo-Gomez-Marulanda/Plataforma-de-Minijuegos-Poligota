@@ -89,14 +89,18 @@ test('las flechas y WASD envían la dirección; otras teclas no', () => {
   ]);
 });
 
-test('la barra espaciadora pausa y reanuda según el estado del servidor', () => {
+test('P y Esc pausan y reanudan según el estado del servidor; la barra espaciadora ya no pausa', () => {
   jugar();
   fireEvent.keyDown(window, { key: ' ' });
+  expect(ws().enviados).toEqual([{ type: 'start' }]); // nada: el espacio no hace nada
+  fireEvent.keyDown(window, { key: 'p' });
   expect(ws().enviados.at(-1)).toEqual({ type: 'pause' });
   ws().recibir(estado({ paused: true }));
   expect(screen.getByText('En pausa')).toBeTruthy();
   fireEvent.keyDown(window, { key: 'ArrowUp' }); // en pausa no gira
   expect(ws().enviados.at(-1)).toEqual({ type: 'pause' });
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(ws().enviados.at(-1)).toEqual({ type: 'resume' });
   fireEvent.click(screen.getByRole('button', { name: 'Reanudar' }));
   expect(ws().enviados.at(-1)).toEqual({ type: 'resume' });
 });

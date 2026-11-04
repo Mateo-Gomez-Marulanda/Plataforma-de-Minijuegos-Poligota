@@ -205,6 +205,36 @@ public class GameTests
         Assert.Equal(puntos + 2 * 6, e.Score); // más 2 por cada una de las 6 filas de caída
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void LaAccionQueLimpiaLineasLasRegistraEnLastCleared(int lineas) =>
+        Assert.Equal(lineas, Game.Apply(PozoParaLaI(lineas), PlayerAction.HardDrop).LastCleared);
+
+    [Fact]
+    public void LastClearedVuelveACeroEnLaSiguienteAccionYEnElTick()
+    {
+        var limpio = Game.Apply(PozoParaLaI(2), PlayerAction.HardDrop);
+        Assert.Equal(2, limpio.LastCleared);
+        Assert.Equal(0, Game.Apply(limpio, PlayerAction.Left).LastCleared);
+        Assert.Equal(0, Game.Apply(limpio, PlayerAction.Rotate).LastCleared);
+        Assert.Equal(0, Game.Tick(limpio).LastCleared);
+    }
+
+    [Fact]
+    public void LaCaidaSinLineasCompletasDejaLastClearedEnCero() =>
+        Assert.Equal(0, Game.Apply(Con(Tetromino.T, 0, 2, 3), PlayerAction.HardDrop).LastCleared);
+
+    [Fact]
+    public void LaGravedadQueFijaLaPiezaTambienRegistraLasLineas()
+    {
+        // La I vertical ya está sobre el fondo del pozo: el siguiente tick la fija y limpia.
+        var sobreElFondo = PozoParaLaI(1) with { Current = new Piece(Tetromino.I, 1, 16, 7) };
+        Assert.Equal(1, Game.Tick(sobreElFondo).LastCleared);
+    }
+
     [Fact]
     public void ElPuntajePorLineasSeMultiplicaPorElNivel()
     {

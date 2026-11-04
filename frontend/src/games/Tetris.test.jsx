@@ -173,3 +173,45 @@ test('al salir de la pantalla se cierra la conexión', () => {
   unmount();
   expect(conexion.cerrado).toBe(true);
 });
+
+// Pruebas del aviso de líneas: lo dispara el evento del servidor y desaparece solo.
+test.each([
+  ['lines_1', 'x1'], ['lines_2', 'x2'], ['lines_3', 'x3'], ['tetris', 'TETRIS'],
+])('el evento %s muestra el aviso «%s»', (evento, texto) => {
+  jugar();
+  ws().recibir({ ...estado(), events: [evento] });
+  expect(screen.getByRole('status').textContent).toBe(texto);
+});
+
+test('sin eventos o con eventos desconocidos no hay aviso', () => {
+  jugar();
+  ws().recibir({ ...estado(), events: [] });
+  ws().recibir({ ...estado(), events: ['otra_cosa'] });
+  ws().recibir(estado()); // un state sin el campo events
+  expect(screen.queryByText(/^(x\d|TETRIS)$/)).toBeNull();
+});
+
+test('el aviso desaparece solo tras un momento y un aviso nuevo lo sustituye', () => {
+  vi.useFakeTimers();
+  try {
+    jugar();
+    ws().recibir({ ...estado(), events: ['lines_2'] });
+    expect(screen.getByText('x2')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(600));
+    ws().recibir({ ...estado(), events: ['tetris'] });
+    expect(screen.queryByText('x2')).toBeNull();
+    expect(screen.getByText('TETRIS')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1000)); // desde el aviso nuevo aún no pasó el tiempo completo
+    expect(screen.getByText('TETRIS')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.queryByText('TETRIS')).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('el aviso de TETRIS tiene su propio estilo', () => {
+  jugar();
+  ws().recibir({ ...estado(), events: ['tetris'] });
+  expect(screen.getByText('TETRIS').className).toContain('tetris__lineas--tetris');
+});

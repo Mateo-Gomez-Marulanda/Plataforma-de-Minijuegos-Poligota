@@ -232,3 +232,26 @@ test('al salir de la pantalla se cierra la conexión', () => {
   unmount();
   expect(conexion.cerrado).toBe(true);
 });
+
+test('al ganar una vida extra se avisa un momento y se actualizan las vidas', () => {
+  vi.useFakeTimers();
+  try {
+    jugar({ lives: 3 });
+    expect(screen.queryByText('¡Vida extra!')).toBeNull();
+    ws().recibir(estado({ lives: 4, wave: 5 }, ['wave_cleared', 'extra_life']));
+    expect(screen.getByText('¡Vida extra!')).toBeTruthy();
+    expect(screen.getByLabelText('Vidas').textContent).toBe('4');
+    expect(screen.getByLabelText('Vidas').className).toContain('asteroids__vidas--sube');
+    act(() => vi.advanceTimersByTime(2100));
+    expect(screen.queryByText('¡Vida extra!')).toBeNull();
+    expect(screen.getByLabelText('Vidas').textContent).toBe('4');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('sin el evento extra_life no hay aviso aunque cambien las vidas', () => {
+  jugar({ lives: 3 });
+  ws().recibir(estado({ lives: 2 }, ['ship_destroyed']));
+  expect(screen.queryByText('¡Vida extra!')).toBeNull();
+});

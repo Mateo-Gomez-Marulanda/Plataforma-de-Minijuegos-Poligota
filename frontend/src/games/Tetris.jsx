@@ -1,7 +1,9 @@
 // Componente del juego Tetris: dibuja el tablero 10x20 que envía el servicio y le manda las teclas.
-// El servidor lleva el reloj, las rotaciones, las colisiones y el puntaje; aquí solo se renderiza cada `state`.
+// El servidor lleva el reloj, las rotaciones, las colisiones y el puntaje; aquí solo se renderiza cada `state`
+// y se muestra el aviso de líneas (x1, x2, x3, TETRIS) que corresponde al evento que envía el servidor.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { conectarTetris } from '../api/tetris.js';
+import { BotonPausa, useTeclasPausa } from './pausa.jsx';
 
 // Tecla del teclado -> tecla del contrato. `repetible` indica si mantenerla pulsada la repite.
 const TECLAS = {
@@ -36,6 +38,10 @@ const VISTA_PREVIA = {
   L: [[0, 0, 1], [1, 1, 1]],
 };
 
+// Evento del servidor al limpiar líneas -> texto del aviso (x1, x2, x3 o TETRIS con 4 a la vez).
+const AVISOS = { lines_1: 'x1', lines_2: 'x2', lines_3: 'x3', tetris: 'TETRIS' };
+const DURACION_AVISO = 1200; // ms que se ve el aviso
+
 // Tablero vacío para mostrar antes de empezar.
 const TABLERO_VACIO = Array.from({ length: 20 }, () => Array(10).fill(0));
 
@@ -56,6 +62,7 @@ export default function Tetris() {
   const [estado, setEstado] = useState(null); // último mensaje `state`
   const [fin, setFin] = useState(null); // datos de `game_over`
   const [error, setError] = useState(null);
+  const [aviso, setAviso] = useState(null); // {texto, n}: la última limpieza de líneas; `n` reinicia la animación
   const conexion = useRef(null);
   const [intento, setIntento] = useState(0); // cambia para reconectar
 
@@ -70,7 +77,14 @@ export default function Tetris() {
         abierta = true;
         if (activa) setFase('listo');
       },
-      onEstado: (msg) => activa && (setEstado(msg), setFase('jugando')),
+      onEstado: (msg) => {
+        if (!activa) return;
+        setEstado(msg);
+        setFase('jugando');
+        // El servidor informa de cuántas líneas se limpiaron; aquí solo se muestra el aviso.
+        const evento = msg.events?.find((e) => AVISOS[e]);
+        if (evento) setAviso((a) => ({ texto: AVISOS[evento], n: (a?.n ?? 0) + 1 }));
+      },
       onFin: (datos) => activa && (setFin(datos), setFase('terminado')),
       onError: (mensaje) => activa && setError(mensaje),
       onCierre: () => {
@@ -85,6 +99,13 @@ export default function Tetris() {
     };
   }, [intento]);
 
+  // El aviso desaparece solo.
+  useEffect(() => {
+    if (!aviso) return undefined;
+    const temporizador = setTimeout(() => setAviso(null), DURACION_AVISO);
+    return () => clearTimeout(temporizador);
+  }, [aviso]);
+
   const pausado = estado?.data.paused === true;
   const jugando = fase === 'jugando';
 
@@ -93,6 +114,7 @@ export default function Tetris() {
     setEstado(null);
     setFin(null);
     setError(null);
+    setAviso(null);
     setFase('jugando'); // evita un instante en 'terminado' sin datos de fin
     conexion.current?.empezar();
   };
@@ -103,16 +125,16 @@ export default function Tetris() {
     else conexion.current?.pausar();
   }, [pausado]);
 
-  // Teclado en toda la página: flechas o WASD (X también gira), barra espaciadora para caída rápida y P o Esc para pausar.
+  // Pausa: P, Esc o el botón (igual en todos los juegos).
+  useTeclasPausa(jugando, alternarPausa);
+
+  // Teclado en toda la página: flechas o WASD (X también gira) y barra espaciadora para caída rápida.
   useEffect(() => {
     if (!jugando) return undefined;
     const alPulsar = (e) => {
       const tecla = TECLAS[e.key];
-      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-        if (!e.repeat) alternarPausa();
-      } else if (tecla && !pausado) {
-        if (tecla.repetible || !e.repeat) conexion.current?.tecla(tecla.key);
-      } else if (!tecla) return;
+      if (!tecla) return;
+      if (!pausado && (tecla.repetible || !e.repeat)) conexion.current?.tecla(tecla.key);
       e.preventDefault(); // evita que flechas y espacio desplacen la página
     };
     window.addEventListener('keydown', alPulsar);
@@ -134,9 +156,16 @@ export default function Tetris() {
 
   return (
     <div className="tetris">
-      <div className={`tetris__tablero${pausado ? ' tetris__tablero--pausa' : ''}`} role="img" aria-label="Tablero de Tetris">
-        {tablero.map((fila, y) =>
-          fila.map((valor, x) => <span key={`${y}-${x}`} className={valor ? `cuadro cuadro--${CLASE_BLOQUE[valor]}` : 'cuadro'} />),
+      <div className="tetris__zona">
+        <div className={`tetris__tablero${pausado ? ' tetris__tablero--pausa' : ''}`} role="img" aria-label="Tablero de Tetris">
+          {tablero.map((fila, y) =>
+            fila.map((valor, x) => <span key={`${y}-${x}`} className={valor ? `cuadro cuadro--${CLASE_BLOQUE[valor]}` : 'cuadro'} />),
+          )}
+        </div>
+        {aviso && (
+          <p key={aviso.n} className={`tetris__lineas${aviso.texto === 'TETRIS' ? ' tetris__lineas--tetris' : ''}`} role="status">
+            {aviso.texto}
+          </p>
         )}
       </div>
 
@@ -163,11 +192,7 @@ export default function Tetris() {
             {fase === 'terminado' ? 'Jugar de nuevo' : 'Jugar'}
           </button>
         )}
-        {jugando && (
-          <button className="boton" onClick={alternarPausa}>
-            {pausado ? 'Reanudar' : 'Pausar'}
-          </button>
-        )}
+        {jugando && <BotonPausa pausado={pausado} onClick={alternarPausa} />}
 
         {/* Controles para pantallas táctiles */}
         <div className="tetris__cruceta" role="group" aria-label="Controles">
