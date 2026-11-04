@@ -17,7 +17,10 @@ Este documento explica el recorrido completo de una jugada, desde el navegador h
                                                   │               │        │   Elixir · Bandit · Plug      │
                                                   │               │   WS   ├───────────────────────────────┤
                                                   │               ├───────▶│ tetris-service      :8004     │
-                                                  └───────────────┘        │   C# · ASP.NET Core · Kestrel │
+                                                  │               │        │   C# · ASP.NET Core · Kestrel │
+                                                  │               │   WS   ├───────────────────────────────┤
+                                                  │               ├───────▶│ asteroids-service   :8005     │
+                                                  └───────────────┘        │   Go · net/http               │
                                                                            └───────────────────────────────┘
 ```
 
@@ -35,6 +38,7 @@ Tres ideas sostienen todo el proyecto:
 | Buscaminas | Java 21 | Spring Boot 4 sobre Tomcat | REST | `ConcurrentHashMap` en memoria |
 | Snake | Elixir 1.17 (BEAM) | Bandit + Plug + WebSockAdapter | WebSocket | Un proceso (`GenServer`) por partida |
 | Tetris | C# 12 / .NET 8 | ASP.NET Core sobre Kestrel | WebSocket | Un bucle `async` por conexión |
+| Asteroids | Go 1.23 | `net/http` + coder/websocket | WebSocket | Una goroutine por partida |
 | Gateway | JavaScript (Node 22) | Express 5 + http-proxy-middleware | HTTP y WS | No guarda estado |
 | Frontend | JavaScript (React 19) | Vite 8 + React Router 7 | HTTP y WS | Solo lo que dibuja |
 
@@ -60,7 +64,7 @@ Los juegos por turnos solo cambian cuando el jugador actúa. Ejemplo: poner un 5
 
 Si la jugada no es válida, el paso 7 lanza una excepción propia (`MovimientoInvalido`) y el framework la convierte en `422` con el cuerpo `{"error": "INVALID_MOVE", "message": "..."}`.
 
-## 4. Recorrido de una conexión WebSocket (Snake y Tetris)
+## 4. Recorrido de una conexión WebSocket (Snake, Tetris y Asteroids)
 
 Aquí el juego avanza solo, así que no basta con preguntar y responder: el servidor tiene un reloj interno (el *tick*) y empuja el estado nuevo al cliente.
 
@@ -93,6 +97,7 @@ Cada servicio tiene dos capas, y la comparación entre lenguajes se hace sobre l
 | Buscaminas | `services/buscaminas-java/src/main/java/.../logic/` | Clases, records y una interfaz sellada |
 | Snake | `services/snake-elixir/lib/logic/` | Funciones puras sobre un struct, con *pattern matching* |
 | Tetris | `services/tetris-csharp/src/Tetris/Logic/` | Records inmutables, `with`, LINQ y funciones estáticas |
+| Asteroids | `services/asteroids-go/logic/` | Estructura mutable con métodos, constantes `iota` y física con pasos fijos |
 
 ## 6. Estado y concurrencia
 
@@ -102,8 +107,9 @@ Cada servicio tiene dos capas, y la comparación entre lenguajes se hace sobre l
 | Buscaminas | `ConcurrentHashMap` + objeto `Partida` | Cada `Partida` tiene métodos `synchronized`. |
 | Snake | Proceso `GenServer` de la partida | Un proceso procesa un mensaje a la vez; nadie más toca su estado. |
 | Tetris | Variables locales de un bucle `async` | Un único bucle procesa en orden teclas y ticks; solo él escribe en el socket. |
+| Asteroids | Estructura que solo toca la goroutine de la partida | Un `select` recibe teclas por un channel y ticks de un `time.Ticker`; nadie más toca el estado. |
 
-En los cuatro casos, si el servicio se reinicia las partidas se pierden. Es una decisión aceptada del proyecto.
+En los cinco casos, si el servicio se reinicia las partidas se pierden. Es una decisión aceptada del proyecto.
 
 ## 7. Cómo se empaqueta cada servicio
 
@@ -115,6 +121,7 @@ Cada servicio tiene un `Dockerfile` que **compila dentro de Docker**, de modo qu
 | `buscaminas-service` | `maven:3.9-eclipse-temurin-21` | `eclipse-temurin:21-jre-alpine` | 325 MB |
 | `snake-service` | `elixir:1.17-alpine` (genera un *release*) | `alpine:3.22` | 48,7 MB |
 | `tetris-service` | `mcr.microsoft.com/dotnet/sdk:8.0` | `dotnet/aspnet:8.0-alpine` | 160 MB |
+| `asteroids-service` | `golang:1.23-alpine` (binario estático) | `scratch` (vacía) | 8 MB |
 | `gateway` | (ninguna: `npm ci`) | `node:22-alpine` | 252 MB |
 | `frontend` | (ninguna) | `node:22-alpine` con el servidor de desarrollo de Vite | 401 MB |
 
@@ -128,6 +135,7 @@ El de Snake es el más pequeño porque un *release* de Elixir lleva su propio ru
 | Buscaminas | JUnit + MockMvc | Lógica (tablero, reglas) y contrato REST sin levantar Tomcat |
 | Snake | ExUnit + WebSockex | Lógica pura y el contrato WebSocket contra el servicio real |
 | Tetris | xUnit + `WebApplicationFactory` | Lógica, mensajes JSON y WebSocket contra el servidor en memoria |
+| Asteroids | `testing` de Go (con `-race`) | Lógica, mensajes JSON, la sesión con reloj falso y WebSocket real |
 | Gateway | `node:test` + `ws` | Reescritura de rutas, CORS, errores y proxy de WebSocket |
 | Frontend | Vitest + Testing Library | Cada pantalla y juego, con `fetch` y `WebSocket` simulados |
 
@@ -140,4 +148,5 @@ El de Snake es el más pequeño porque un *release* de Elixir lleva su propio ru
 | [buscaminas-java.md](buscaminas-java.md) | Buscaminas con Java 21 y Spring Boot |
 | [snake-elixir.md](snake-elixir.md) | Snake con Elixir, OTP, Bandit y Plug |
 | [tetris-csharp.md](tetris-csharp.md) | Tetris con C#, ASP.NET Core y WebSockets |
+| [asteroids-go.md](asteroids-go.md) | Asteroids con Go, goroutines y WebSockets |
 | [frontend-y-gateway.md](frontend-y-gateway.md) | React, Vite, el cliente de API y el gateway de Node |

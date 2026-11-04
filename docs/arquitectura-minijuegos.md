@@ -26,7 +26,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 
 **Incluido:**
 
-- Cuatro minijuegos de un solo jugador: Sudoku, Buscaminas, Snake y Tetris.  
+- Cinco minijuegos de un solo jugador: Sudoku, Buscaminas, Snake, Tetris y Asteroids.  
 - Un frontend único en React.  
 - Un gateway en Node.js que enruta las peticiones.  
 - Orquestación de todos los servicios con Docker Compose.
@@ -60,18 +60,18 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
                          │  · Enruta por prefijo         │
                          │  · Proxy de WebSockets        │
                          │  · CORS centralizado          │
-                         └──┬─────────┬─────────┬─────┬──┘
-                            │         │         │     │
-             ┌──────────────┘         │         │     └──────────────┐
-             │ REST                   │ REST    │ WebSocket          │ WebSocket
-             ▼                        ▼         ▼                    ▼
-   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-   │  sudoku-service  │ │buscaminas-service│ │  snake-service   │ │  tetris-service  │
-   │  Python          │ │  Java            │ │  Elixir          │ │  C#              │
-   │  FastAPI         │ │  Spring Boot     │ │  Phoenix         │ │  ASP.NET Core    │
-   │  :8001           │ │  :8002           │ │  :8003           │ │  :8004           │
-   └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘
-        por turnos           por turnos          tiempo real          tiempo real
+                         └──┬─────────┬─────────┬─────┬─────┬──┘
+                            │         │         │     │     │
+             ┌──────────────┘         │         │     │     └──────────────┐
+             │ REST                   │ REST    │ WS  │ WS                 │ WS
+             ▼                        ▼         ▼     ▼                    ▼
+   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+   │  sudoku-service  │ │buscaminas-service│ │  snake-service   │ │  tetris-service  │ │asteroids-service │
+   │  Python          │ │  Java            │ │  Elixir          │ │  C#              │ │  Go              │
+   │  FastAPI         │ │  Spring Boot     │ │  Phoenix         │ │  ASP.NET Core    │ │  net/http        │
+   │  :8001           │ │  :8002           │ │  :8003           │ │  :8004           │ │  :8005           │
+   └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘
+        por turnos           por turnos          tiempo real          tiempo real          tiempo real
 
    ──────────────────── Red interna de Docker Compose: "minijuegos-net" ────────────────────
 ```
@@ -86,6 +86,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 | `buscaminas-service` | Java \+ Spring Boot | 8002 | Generar tableros, destapar casillas, colocar banderas. |
 | `snake-service` | Elixir \+ Phoenix | 8003 | Ejecutar el bucle de juego de Snake en el servidor. |
 | `tetris-service` | C\# \+ ASP.NET Core | 8004 | Ejecutar el bucle de juego de Tetris en el servidor. |
+| `asteroids-service` | Go \+ net/http | 8005 | Ejecutar el bucle de juego y la física de Asteroids en el servidor. |
 
 ### 2.3 Enrutamiento en el gateway
 
@@ -95,6 +96,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 | `/api/buscaminas/*` | `http://buscaminas-service:8002/*` | HTTP |
 | `/ws/snake` | `ws://snake-service:8003/ws` | WebSocket |
 | `/ws/tetris` | `ws://tetris-service:8004/ws` | WebSocket |
+| `/ws/asteroids` | `ws://asteroids-service:8005/ws` | WebSocket |
 
 El frontend **solo conoce el gateway**, y llega a él sin direcciones fijas: el navegador llama a su propio origen (`/api/...` y `/ws/...`) y el servidor de desarrollo de Vite reenvía esas rutas al gateway (`localhost:3000`). Así la web funciona también para quien la abre desde otro equipo. Nunca llama directamente a un servicio de juego. Esto permite cambiar el lenguaje o el puerto de un juego sin tocar React.
 
@@ -114,7 +116,7 @@ Cliente                         Servidor
    │◀──────────── { estado } ─────│
 ```
 
-**Juegos en tiempo real (Snake, Tetris) → WebSocket**
+**Juegos en tiempo real (Snake, Tetris, Asteroids) → WebSocket**
 
 El juego avanza solo, aunque el usuario no haga nada (la serpiente se mueve, las piezas caen). El **servidor es la autoridad**: mantiene un reloj interno (*tick*) y en cada tick calcula el nuevo estado y lo envía al cliente. El cliente solo envía las teclas que presiona.
 
@@ -128,11 +130,11 @@ Cliente                         Servidor
    │◀═════════ { game_over } ═════│  el reloj se detiene
 ```
 
-> **Decisión de diseño:** se usan **WebSockets nativos con mensajes JSON** en ambos servicios de tiempo real, y no las abstracciones propias de cada framework (Phoenix Channels, SignalR). Esas librerías exigen un cliente JavaScript específico y un protocolo propio, lo que rompería el contrato común y obligaría al frontend a saber en qué lenguaje está cada juego.
+> **Decisión de diseño:** se usan **WebSockets nativos con mensajes JSON** en los tres servicios de tiempo real, y no las abstracciones propias de cada framework (Phoenix Channels, SignalR). Esas librerías exigen un cliente JavaScript específico y un protocolo propio, lo que rompería el contrato común y obligaría al frontend a saber en qué lenguaje está cada juego.
 
 ### 2.5 Docker Compose
 
-Cada servicio tiene su propio `Dockerfile` y todos se levantan con un solo comando. Esto evita tener que instalar Python, JDK, Elixir/Erlang y .NET en la máquina local.
+Cada servicio tiene su propio `Dockerfile` y todos se levantan con un solo comando. Esto evita tener que instalar Python, JDK, Elixir/Erlang, .NET y Go en la máquina local.
 
 ```
 services:
@@ -144,7 +146,7 @@ services:
   gateway:
     build: ./gateway
     ports: ["3000:3000"]
-    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service]
+    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service]
 
   sudoku-service:
     build: ./services/sudoku-python
@@ -161,6 +163,10 @@ services:
   tetris-service:
     build: ./services/tetris-csharp
     expose: ["8004"]
+
+  asteroids-service:
+    build: ./services/asteroids-go
+    expose: ["8005"]
 
 networks:
   default:
@@ -199,7 +205,8 @@ minijuegos/
     │   └── tests/
     ├── buscaminas-java/
     ├── snake-elixir/
-    └── tetris-csharp/
+    ├── tetris-csharp/
+    └── asteroids-go/
 ```
 
 ---
@@ -292,6 +299,7 @@ Todos los servicios respetan el mismo formato de mensajes, de modo que el fronte
 ```json
 { "type": "start", "options": { } }
 { "type": "input", "key": "left" }
+{ "type": "input", "key": "thrust", "pressed": true }
 { "type": "pause" }
 { "type": "resume" }
 ```
@@ -300,9 +308,16 @@ Todos los servicios respetan el mismo formato de mensajes, de modo que el fronte
 
 ```json
 { "type": "state", "tick": 42, "status": "playing", "board": [[...]], "data": { "score": 120 } }
+{ "type": "state", "tick": 43, "status": "playing", "board": [[...]], "data": { }, "events": ["combo_up"] }
 { "type": "game_over", "data": { "score": 340, "reason": "collision" } }
 { "type": "error", "error": "UNKNOWN_KEY", "message": "Tecla no reconocida" }
 ```
+
+Dos campos son opcionales y los servicios que no los usan (Snake, Tetris) los ignoran u omiten:
+
+- `pressed` (en `input`): `true` al presionar la tecla y `false` al soltarla. Permite teclas mantenidas, como rotar o acelerar en Asteroids. Si se omite, el `input` es una pulsación única.
+- `events` (en `state`): lista de lo ocurrido desde el último envío. El frontend la usa solo para efectos visuales y de sonido.
+- Cuando el juego no tiene cuadrícula, `board` se envía como `null` y las entidades viajan en `data`.
 
 Una conexión WebSocket corresponde a una partida. Al cerrarse la conexión, el servidor detiene el reloj y libera la partida.
 
@@ -516,6 +531,110 @@ Tetris es el juego con la lógica más compleja del proyecto: varias piezas con 
 
 ---
 
+### 5.5 Asteroids — Go
+
+| Campo | Valor |
+| :---- | :---- |
+| Lenguaje | Go 1.23 |
+| Framework web | Librería estándar `net/http` \+ `coder/websocket` |
+| Tipo | Tiempo real |
+| Comunicación | WebSocket |
+| Puerto interno | 8005 |
+| Simulación | 60 ticks por segundo |
+| Envío de estado | 30 veces por segundo |
+| Mundo | Plano continuo de 800 × 600 unidades, con bordes envolventes |
+
+#### Cómo funciona el juego
+
+El jugador controla una nave en el centro de un espacio lleno de asteroides. La nave rota, acelera y dispara. Cada asteroide destruido se parte en fragmentos más pequeños y rápidos. Destruir asteroides en rápida sucesión aumenta un multiplicador de puntos (combo). Al limpiar la pantalla comienza una oleada más difícil. La partida termina cuando la nave pierde todas sus vidas.
+
+#### Qué debe implementar la lógica
+
+- **Física de la nave**: rotación a velocidad angular fija, aceleración en la dirección a la que apunta, inercia y fricción que reduce la velocidad gradualmente, y una velocidad máxima.  
+- **Mundo envolvente**: toda entidad que sale por un borde reaparece por el opuesto.  
+- **Disparos**: las balas heredan la velocidad de la nave más su propia velocidad, tienen un tiempo de vida limitado (unos 1,2 segundos) y existe un máximo de balas simultáneas y un tiempo mínimo entre disparos.  
+- **Asteroides**: tres tamaños (grande, mediano, pequeño). Al ser destruido, un asteroide grande o mediano se divide en dos del tamaño inferior, con direcciones aleatorias y mayor velocidad. Los pequeños desaparecen.  
+- **Colisiones**: entre círculos, comparando la distancia entre centros con la suma de los radios. Se comprueban bala contra asteroide y nave contra asteroide, considerando el envolvimiento de bordes.  
+- **Combo**: cada destrucción incrementa el multiplicador (hasta un máximo, por ejemplo x8) y reinicia un temporizador de 2 segundos. Si el temporizador llega a cero, el multiplicador vuelve a x1.  
+- **Puntaje**: los asteroides pequeños valen más que los grandes (por ejemplo, 20, 50 y 100 puntos), multiplicados por el combo actual.  
+- **Oleadas**: cada oleada genera más asteroides grandes, siempre lejos de la nave.  
+- **Vidas e invulnerabilidad**: la nave tiene 3 vidas. Al reaparecer es invulnerable durante 2 segundos.  
+- **Aleatoriedad reproducible**: el generador aleatorio usa una semilla almacenada en el estado, para que una partida pueda reproducirse exactamente en las pruebas.
+
+**Teclas:** `rotate_left`, `rotate_right`, `thrust`, `fire`
+
+#### Particularidades del contrato
+
+Asteroids introduce dos diferencias respecto a los demás juegos en tiempo real:
+
+**1\. Teclas mantenidas.** Rotar y acelerar son acciones continuas. El cliente informa cuándo se presiona y cuándo se suelta cada tecla, y el servidor mantiene el conjunto de teclas activas, aplicándolas en cada tick:
+
+```json
+{ "type": "input", "key": "thrust", "pressed": true }
+{ "type": "input", "key": "thrust", "pressed": false }
+```
+
+**2\. Mundo continuo en lugar de cuadrícula.** No existe una matriz de celdas, así que `board` se envía como `null` y las entidades viajan en `data` con coordenadas decimales:
+
+```json
+{
+  "type": "state",
+  "tick": 1840,
+  "status": "playing",
+  "board": null,
+  "data": {
+    "ship": { "x": 400.0, "y": 300.0, "angle": 1.57, "thrusting": true, "invulnerable": false },
+    "asteroids": [ { "id": 12, "x": 120.5, "y": 88.2, "size": "large" } ],
+    "bullets": [ { "x": 410.3, "y": 280.1 } ],
+    "score": 4250,
+    "combo": 3,
+    "lives": 2,
+    "wave": 4
+  },
+  "events": [ "asteroid_destroyed", "combo_up" ]
+}
+```
+
+El campo `events` lista lo que ocurrió desde el último envío. El frontend lo usa exclusivamente para efectos visuales y de sonido (explosiones, temblor de pantalla, animación del multiplicador). Eventos posibles: `asteroid_destroyed`, `combo_up`, `combo_lost`, `ship_destroyed`, `wave_cleared`, `game_over`.
+
+#### Diseño del bucle de juego
+
+Cada partida corre en su propia goroutine con un único bucle que es la autoridad del estado:
+
+```
+goroutine de partida:
+  ticker a 60 Hz
+  select:
+    ← channel de entrada  → actualiza el conjunto de teclas activas
+    ← ticker              → aplica teclas, avanza física, resuelve colisiones,
+                             cada 2 ticks envía el estado al cliente
+    ← contexto cancelado  → la conexión se cerró, termina la goroutine
+```
+
+Toda modificación del estado ocurre dentro de esta goroutine. La goroutine que lee el WebSocket solo envía las teclas por el channel y nunca toca el estado directamente, lo que elimina las condiciones de carrera sin necesidad de `mutex`.
+
+La simulación avanza 60 veces por segundo para que la física sea precisa, pero el estado se envía solo 30 veces por segundo para reducir el tráfico.
+
+#### Por qué Go
+
+Asteroids necesita un bucle de alta frecuencia, muchas entidades en movimiento y entrada del jugador en paralelo. Go resuelve esto con su modelo de concurrencia nativo: una goroutine por partida, un `time.Ticker` para el reloj y un channel para las teclas, combinados en un `select`. Es un modelo distinto al de los otros dos juegos de tiempo real (procesos con mensajes en Elixir y async/await en C\#), lo que permite comparar tres formas de resolver el mismo problema.
+
+#### Ventajas
+
+- El patrón goroutine \+ ticker \+ channel \+ `select` expresa el bucle de juego de forma directa y sin condiciones de carrera.  
+- Buen rendimiento para actualizar muchas entidades 60 veces por segundo.  
+- Compila a un único binario estático: la imagen Docker más ligera del proyecto.  
+- La librería estándar cubre casi todo: servidor HTTP, JSON, matemáticas y aleatoriedad.
+
+#### Desventajas
+
+- Go no tiene sobrecarga de operadores, así que la aritmética de vectores es verbosa (`pos = pos.Add(vel.Scale(dt))`).  
+- No tiene enums reales ni *pattern matching*: el tamaño de los asteroides o los tipos de evento se modelan con constantes `iota` y `switch`.  
+- Como el apuntado requiere precisión, la latencia de red se percibe más que en Snake. En ejecución local no es un problema.  
+- El JSON con muchas entidades puede ser pesado; si hiciera falta, se pueden redondear las coordenadas a un decimal.
+
+---
+
 ## 6\. Resumen comparativo
 
 | Juego | Lenguaje | Paradigma dominante | Tipo | Protocolo | Reto técnico principal |
@@ -524,8 +643,9 @@ Tetris es el juego con la lógica más compleja del proyecto: varias piezas con 
 | Buscaminas | Java | Orientado a objetos | Turnos | REST | Flood fill y generación segura |
 | Snake | Elixir | Funcional / actores | Tiempo real | WebSocket | Bucle de juego con procesos |
 | Tetris | C\# | Multiparadigma | Tiempo real | WebSocket | Rotaciones y concurrencia del estado |
+| Asteroids | Go | Imperativo / concurrente (CSP) | Tiempo real | WebSocket | Física con inercia y bucle a 60 Hz |
 
-La combinación cubre cuatro estilos de programación distintos, lo cual es deseable para el objetivo de comparar cómo se expresa la lógica de un juego en cada uno.
+La combinación cubre cinco estilos de programación distintos, lo cual es deseable para el objetivo de comparar cómo se expresa la lógica de un juego en cada uno.
 
 ---
 
@@ -586,7 +706,7 @@ Como uno de los objetivos es evaluar a la IA, conviene revisar cada servicio con
 - ¿Respeta el contrato sin desviaciones?  
 - ¿La separación entre lógica y servidor se mantiene limpia?  
 - ¿Cuántas correcciones fueron necesarias hasta que funcionó?  
-- ¿Se gestionan bien los casos límite (giro de 180° en Snake, primer clic en Buscaminas, rotación junto a la pared en Tetris)?
+- ¿Se gestionan bien los casos límite (giro de 180° en Snake, primer clic en Buscaminas, rotación junto a la pared en Tetris, colisiones cerca de los bordes envolventes en Asteroids)?
 
 ---
 

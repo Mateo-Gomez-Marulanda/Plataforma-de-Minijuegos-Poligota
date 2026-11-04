@@ -27,7 +27,8 @@ export function abrirJuego(ruta, { onAbrir, onEstado, onFin, onError, onCierre }
 
   return {
     empezar: (opciones) => enviar({ type: 'start', ...(opciones && { options: opciones }) }),
-    tecla: (key) => enviar({ type: 'input', key }),
+    // `pressed` (true al pulsar, false al soltar) solo se envía en los juegos con teclas mantenidas (Asteroids).
+    tecla: (key, pressed) => enviar({ type: 'input', key, ...(pressed !== undefined && { pressed }) }),
     pausar: () => enviar({ type: 'pause' }),
     reanudar: () => enviar({ type: 'resume' }),
     cerrar: () => {

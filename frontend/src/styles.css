@@ -12,6 +12,7 @@
   --coral: #ef5b45;
   --violeta: #a06cde;
   --verde: #3dbe8b;
+  --celeste: #4fb8e8;
 
   --fuente-titulo: 'Unbounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
   --fuente-texto: 'Hanken Grotesk', system-ui, sans-serif;
@@ -61,6 +62,7 @@ a:focus-visible {
 .ficha--coral { background: var(--coral); }
 .ficha--violeta { background: var(--violeta); }
 .ficha--verde { background: var(--verde); }
+.ficha--celeste { background: var(--celeste); }
 
 /* Las fichas de la pantalla de inicio caen en orden, como piezas de Tetris */
 .fichas--cae .ficha {
@@ -212,6 +214,7 @@ a:focus-visible {
 .juego--coral { background: var(--coral); }
 .juego--violeta { background: var(--violeta); }
 .juego--verde { background: var(--verde); }
+.juego--celeste { background: var(--celeste); }
 
 .juego__nombre {
   font-family: var(--fuente-titulo);
@@ -299,6 +302,7 @@ a:focus-visible {
 .tecnologia--coral { border-left-color: var(--coral); }
 .tecnologia--violeta { border-left-color: var(--violeta); }
 .tecnologia--verde { border-left-color: var(--verde); }
+.tecnologia--celeste { border-left-color: var(--celeste); }
 
 .tecnologia dt {
   color: var(--papel-tenue);
@@ -448,7 +452,8 @@ a:focus-visible {
 .sudoku__aviso,
 .snake__aviso,
 .buscaminas__aviso,
-.tetris__aviso {
+.tetris__aviso,
+.asteroids__aviso {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -603,6 +608,96 @@ a:focus-visible {
   .tetris__cruceta { display: grid; }
 }
 
+/* ---------- Asteroids ---------- */
+
+.asteroids {
+  display: grid;
+  grid-template-columns: minmax(0, 46rem) minmax(13rem, 16rem);
+  gap: 2.5rem;
+  align-items: start;
+  justify-content: start;
+}
+
+.asteroids__mundo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.5rem;
+  background: var(--tinta);
+}
+
+.asteroids__mundo--sacude { animation: sacude 0.35s linear; }
+.asteroids__mundo--pausa { opacity: 0.45; }
+
+@keyframes sacude {
+  20% { transform: translate(-6px, 3px); }
+  40% { transform: translate(5px, -4px); }
+  60% { transform: translate(-4px, -3px); }
+  80% { transform: translate(3px, 3px); }
+}
+
+.asteroids__nave { fill: var(--celeste); stroke: var(--papel); stroke-width: 1.5; }
+.asteroids__nave--parpadea { animation: parpadea 0.3s steps(2) infinite; }
+.asteroids__llama { fill: var(--amarillo); }
+.asteroids__roca { fill: none; stroke: var(--papel-tenue); stroke-width: 2; stroke-linejoin: round; }
+.asteroids__bala { fill: var(--amarillo); }
+
+@keyframes parpadea { 50% { opacity: 0.25; } }
+
+.asteroids__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.asteroids__panel p { margin: 0; }
+
+.asteroids__datos {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.asteroids__datos div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.asteroids__datos dt { color: var(--papel-tenue); }
+
+.asteroids__datos dd {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.asteroids__combo { color: var(--celeste); }
+.asteroids__combo--sube { animation: pulso 0.25s ease-out; }
+
+@keyframes pulso {
+  from { transform: scale(1.5); }
+  to { transform: scale(1); }
+}
+
+/* Controles táctiles: solo en pantallas sin puntero preciso */
+.asteroids__cruceta {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-width: 14rem;
+}
+
+.asteroids__cruceta-rotate_left { grid-column: 1; grid-row: 1; }
+.asteroids__cruceta-thrust { grid-column: 2; grid-row: 1; }
+.asteroids__cruceta-rotate_right { grid-column: 3; grid-row: 1; }
+.asteroids__cruceta-fire { grid-column: 1 / 4; grid-row: 2; }
+
+@media (pointer: coarse) {
+  .asteroids__cruceta { display: grid; }
+}
+
 /* ---------- Buscaminas ---------- */
 
 .buscaminas {
@@ -705,11 +800,15 @@ a:focus-visible {
 @media (max-width: 52rem) {
   .sudoku,
   .snake,
-  .tetris { grid-template-columns: 1fr; }
+  .tetris,
+  .asteroids { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .juego--activo { transition: none; }
   .fichas--cae .ficha { animation: none; }
+  .asteroids__mundo--sacude,
+  .asteroids__nave--parpadea,
+  .asteroids__combo--sube { animation: none; }
   .boton { transition: none; }
 }

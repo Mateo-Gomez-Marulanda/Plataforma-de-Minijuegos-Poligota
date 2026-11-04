@@ -14,4 +14,5 @@ export const JUEGOS = [
   { id: 'buscaminas', nombre: 'Buscaminas', lenguaje: 'Java', color: 'coral', ruta: '/juegos/buscaminas' },
   { id: 'snake', nombre: 'Snake', lenguaje: 'Elixir', color: 'violeta', ruta: '/juegos/snake' },
   { id: 'tetris', nombre: 'Tetris', lenguaje: 'C#', color: 'verde', ruta: '/juegos/tetris' },
+  { id: 'asteroids', nombre: 'Asteroids', lenguaje: 'Go', color: 'celeste', ruta: '/juegos/asteroids' },
 ];
