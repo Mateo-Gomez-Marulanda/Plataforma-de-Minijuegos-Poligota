@@ -12,12 +12,14 @@ export function buildRoutes(env = process.env) {
     buscaminas: env.BUSCAMINAS_URL ?? 'http://buscaminas-service:8002',
     snake: env.SNAKE_URL ?? 'http://snake-service:8003',
     tetris: env.TETRIS_URL ?? 'http://tetris-service:8004',
+    asteroids: env.ASTEROIDS_URL ?? 'http://asteroids-service:8005',
   };
   return [
     { prefix: '/api/sudoku', target: t.sudoku, rewrite: '' },
     { prefix: '/api/buscaminas', target: t.buscaminas, rewrite: '' },
     { prefix: '/ws/snake', target: t.snake, rewrite: '/ws', ws: true },
     { prefix: '/ws/tetris', target: t.tetris, rewrite: '/ws', ws: true },
+    { prefix: '/ws/asteroids', target: t.asteroids, rewrite: '/ws', ws: true },
   ];
 }
 

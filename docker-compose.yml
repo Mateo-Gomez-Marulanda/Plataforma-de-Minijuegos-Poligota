@@ -12,7 +12,7 @@ services:
   gateway:
     build: ./gateway
     ports: ["3000:3000"]
-    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service]
+    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service]
 
   sudoku-service:
     build: ./services/sudoku-python
@@ -29,6 +29,10 @@ services:
   tetris-service:
     build: ./services/tetris-csharp
     expose: ["8004"]
+
+  asteroids-service:
+    build: ./services/asteroids-go
+    expose: ["8005"]
 
 networks:
   default:

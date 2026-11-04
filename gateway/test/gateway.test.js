@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { createGateway } from '../src/app.js';
+import { buildRoutes, createGateway } from '../src/app.js';
 
 // Arranca un servidor en un puerto libre y devuelve ese puerto.
 const listen = (server) => new Promise((r) => server.listen(0, '127.0.0.1', () => r(server.address().port)));
@@ -104,4 +104,11 @@ test('WebSocket en ruta no registrada se rechaza', async () => {
   const ws = new WebSocket(`ws://127.0.0.1:${gwPort}/ws/otro`);
   const err = await new Promise((r) => ws.once('error', r));
   assert.ok(err);
+});
+
+// La tabla de rutas incluye Asteroids como WebSocket hacia /ws del servicio, y su destino se puede sobrescribir.
+test('buildRoutes: /ws/asteroids apunta a asteroids-service:8005', () => {
+  const ruta = (r) => r.find((x) => x.prefix === '/ws/asteroids');
+  assert.deepEqual(ruta(buildRoutes({})), { prefix: '/ws/asteroids', target: 'http://asteroids-service:8005', rewrite: '/ws', ws: true });
+  assert.equal(ruta(buildRoutes({ ASTEROIDS_URL: 'http://localhost:9' })).target, 'http://localhost:9');
 });

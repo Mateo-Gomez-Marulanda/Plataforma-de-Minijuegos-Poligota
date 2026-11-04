@@ -1,0 +1,3 @@
+# Excluye del build de Docker las pruebas y los binarios locales.
+**/*_test.go
+asteroids
