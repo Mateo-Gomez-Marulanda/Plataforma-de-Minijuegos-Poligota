@@ -26,7 +26,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 
 **Incluido:**
 
-- Cinco minijuegos de un solo jugador: Sudoku, Buscaminas, Snake, Tetris y Asteroids.  
+- Seis minijuegos de un solo jugador: Sudoku, Buscaminas, Snake, Tetris, Asteroids y Blackjack.  
 - Un frontend único en React.  
 - Un gateway en Node.js que enruta las peticiones.  
 - Orquestación de todos los servicios con Docker Compose.
@@ -45,35 +45,31 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 ### 2.1 Diagrama
 
 ```
-                         ┌──────────────────────────────┐
-                         │        Navegador              │
-                         │   Frontend React (Vite)       │
-                         │   localhost:5173              │
-                         └──────────────┬───────────────┘
-                                        │
-                     HTTP (REST)  +  WebSocket (ws://)
-                                        │
-                         ┌──────────────▼───────────────┐
-                         │     API Gateway (Node.js)     │
-                         │  Express + http-proxy-mw      │
-                         │  localhost:3000               │
-                         │  · Enruta por prefijo         │
-                         │  · Proxy de WebSockets        │
-                         │  · CORS centralizado          │
-                         └──┬─────────┬─────────┬─────┬─────┬──┘
-                            │         │         │     │     │
-             ┌──────────────┘         │         │     │     └──────────────┐
-             │ REST                   │ REST    │ WS  │ WS                 │ WS
-             ▼                        ▼         ▼     ▼                    ▼
-   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-   │  sudoku-service  │ │buscaminas-service│ │  snake-service   │ │  tetris-service  │ │asteroids-service │
-   │  Python          │ │  Java            │ │  Elixir          │ │  C#              │ │  Go              │
-   │  FastAPI         │ │  Spring Boot     │ │  Phoenix         │ │  ASP.NET Core    │ │  net/http        │
-   │  :8001           │ │  :8002           │ │  :8003           │ │  :8004           │ │  :8005           │
-   └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘
-        por turnos           por turnos          tiempo real          tiempo real          tiempo real
+                                             ┌────────────────────────────────┐
+                                             │           Navegador            │
+                                             │     Frontend React (Vite)      │
+                                             │         localhost:5173         │
+                                             └────────────────┬───────────────┘
+                                                              │
+                                             HTTP (REST)  +  WebSocket (ws://)
+                                                              │
+   ┌──────────────────────────────────────────────────────────▼───────────────────────────────────────────────────────────┐
+   │                                                API Gateway (Node.js)                                                 │
+   │                                      Express + http-proxy-mw  ·  localhost:3000                                      │
+   │                           · Enruta por prefijo  · Proxy de WebSockets  · CORS centralizado                           │
+   └─────────┬────────────────────┬────────────────────┬────────────────────┬────────────────────┬────────────────────┬───┘
+             │                    │                    │                    │                    │                    │
+               REST                 REST                 WS                   WS                   WS                   REST
+             ▼                    ▼                    ▼                    ▼                    ▼                    ▼
+   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+   │  sudoku-service  │ │buscaminas-service│ │  snake-service   │ │  tetris-service  │ │asteroids-service │ │blackjack-service │
+   │      Python      │ │       Java       │ │      Elixir      │ │        C#        │ │        Go        │ │      Kotlin      │
+   │     FastAPI      │ │   Spring Boot    │ │     Phoenix      │ │   ASP.NET Core   │ │     net/http     │ │       Ktor       │
+   │      :8001       │ │      :8002       │ │      :8003       │ │      :8004       │ │      :8005       │ │      :8006       │
+   └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘ └──────────────────┘
+        por turnos           por turnos          tiempo real          tiempo real          tiempo real           por turnos
 
-   ──────────────────── Red interna de Docker Compose: "minijuegos-net" ────────────────────
+   ────────────────────────────── Red interna de Docker Compose: "minijuegos-net" ──────────────────────────────
 ```
 
 ### 2.2 Componentes
@@ -87,6 +83,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 | `snake-service` | Elixir \+ Phoenix | 8003 | Ejecutar el bucle de juego de Snake en el servidor. |
 | `tetris-service` | C\# \+ ASP.NET Core | 8004 | Ejecutar el bucle de juego de Tetris en el servidor. |
 | `asteroids-service` | Go \+ net/http | 8005 | Ejecutar el bucle de juego y la física de Asteroids en el servidor. |
+| `blackjack-service` | Kotlin \+ Ktor | 8006 | Gestionar el mazo, las manos, las apuestas y el turno del crupier. |
 
 ### 2.3 Enrutamiento en el gateway
 
@@ -97,6 +94,7 @@ No es un producto comercial ni un proyecto de portafolio. Por eso se prioriza la
 | `/ws/snake` | `ws://snake-service:8003/ws` | WebSocket |
 | `/ws/tetris` | `ws://tetris-service:8004/ws` | WebSocket |
 | `/ws/asteroids` | `ws://asteroids-service:8005/ws` | WebSocket |
+| `/api/blackjack/*` | `http://blackjack-service:8006/*` | HTTP |
 
 El frontend **solo conoce el gateway**, y llega a él sin direcciones fijas: el navegador llama a su propio origen (`/api/...` y `/ws/...`) y el servidor de desarrollo de Vite reenvía esas rutas al gateway (`localhost:3000`). Así la web funciona también para quien la abre desde otro equipo. Nunca llama directamente a un servicio de juego. Esto permite cambiar el lenguaje o el puerto de un juego sin tocar React.
 
@@ -104,7 +102,7 @@ El frontend **solo conoce el gateway**, y llega a él sin direcciones fijas: el 
 
 Los juegos se dividen en dos categorías, y cada una usa un protocolo distinto:
 
-**Juegos por turnos (Sudoku, Buscaminas) → REST**
+**Juegos por turnos (Sudoku, Buscaminas, Blackjack) → REST**
 
 El juego solo cambia cuando el usuario actúa. Cada acción es una petición HTTP independiente: el cliente envía la jugada y el servidor responde con el estado completo actualizado.
 
@@ -134,7 +132,7 @@ Cliente                         Servidor
 
 ### 2.5 Docker Compose
 
-Cada servicio tiene su propio `Dockerfile` y todos se levantan con un solo comando. Esto evita tener que instalar Python, JDK, Elixir/Erlang, .NET y Go en la máquina local.
+Cada servicio tiene su propio `Dockerfile` y todos se levantan con un solo comando. Esto evita tener que instalar Python, JDK (Java y Kotlin), Elixir/Erlang, .NET y Go en la máquina local.
 
 ```
 services:
@@ -146,7 +144,7 @@ services:
   gateway:
     build: ./gateway
     ports: ["3000:3000"]
-    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service]
+    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service, blackjack-service]
 
   sudoku-service:
     build: ./services/sudoku-python
@@ -167,6 +165,10 @@ services:
   asteroids-service:
     build: ./services/asteroids-go
     expose: ["8005"]
+
+  blackjack-service:
+    build: ./services/blackjack-kotlin
+    expose: ["8006"]
 
 networks:
   default:
@@ -206,7 +208,8 @@ minijuegos/
     ├── buscaminas-java/
     ├── snake-elixir/
     ├── tetris-csharp/
-    └── asteroids-go/
+    ├── asteroids-go/
+    └── blackjack-kotlin/
 ```
 
 ---
@@ -282,8 +285,8 @@ Todos los servicios respetan el mismo formato de mensajes, de modo que el fronte
 ```
 
 - `status`: `"playing"`, `"won"` o `"lost"`.  
-- `board`: matriz que el frontend dibuja directamente.  
-- `data`: información adicional propia del juego (minas restantes, errores, etc.).  
+- `board`: matriz que el frontend dibuja directamente, o `null` en los juegos sin cuadrícula (Blackjack).  
+- `data`: información adicional propia del juego (minas restantes, errores, etc.). Los juegos con acciones condicionadas incluyen el campo opcional `allowedActions` con las acciones que el jugador puede hacer en ese momento, para que el frontend no necesite conocer las reglas.  
 - `message`: texto opcional para el usuario (por ejemplo, el motivo de un error).
 
 **Formato de error:**
@@ -635,6 +638,141 @@ Asteroids necesita un bucle de alta frecuencia, muchas entidades en movimiento y
 
 ---
 
+### 5.6 Blackjack — Kotlin
+
+| Campo | Valor |
+| :---- | :---- |
+| Lenguaje | Kotlin 2.0 (JVM 21) |
+| Framework web | Ktor |
+| Tipo | Por turnos |
+| Comunicación | REST |
+| Puerto interno | 8006 |
+| Fichas iniciales | 1000 |
+| Fichas mínimas | 50 (al terminar cada ronda) |
+| Apuesta mínima / máxima | 10 / 500 |
+
+#### Cómo funciona el juego
+
+El jugador se enfrenta al crupier. Ambos reciben dos cartas; una de las del crupier queda boca abajo. El objetivo es sumar más que el crupier sin pasarse de 21. Las cartas numéricas valen su número, las figuras valen 10 y el As vale 11 o 1, según convenga. El jugador pide cartas o se planta, y luego el crupier juega con reglas fijas. La sesión continúa ronda tras ronda sin fin: para no romper la economía del juego, el jugador nunca se queda con menos de 50 fichas al terminar una ronda.
+
+#### Reglas de la mesa
+
+Estas reglas son fijas y deben respetarse exactamente:
+
+- **Zapato de 6 mazos**, barajado con Fisher-Yates. Se rebaraja al inicio de una ronda cuando se ha usado el 75 % de las cartas.  
+- **El crupier pide hasta 17 y se planta en cualquier 17**, incluido el 17 suave (regla S17).  
+- **Blackjack natural** (As \+ carta de valor 10 con las dos primeras cartas) **paga 3:2**. Un 21 conseguido con más cartas no es Blackjack y paga 1:1.  
+- **Victoria normal paga 1:1. Empate (push) devuelve la apuesta.**  
+- Si el crupier tiene Blackjack, la ronda termina de inmediato: el jugador pierde, salvo que también tenga Blackjack (empate).  
+- **Doblar**: permitido con las dos primeras cartas de cualquier mano. Se duplica la apuesta, se recibe exactamente una carta y la mano se planta automáticamente.  
+- **Dividir (split)**: permitido una sola vez, con dos cartas del mismo rango. Cada mano nueva lleva una apuesta igual a la original. Se permite doblar después de dividir.  
+- **Ases divididos**: reciben una sola carta cada uno y no pueden pedir más. Un As \+ 10 tras dividir cuenta como 21, no como Blackjack.  
+- **Mínimo de 50 fichas**: al liquidar una ronda, si el jugador queda con menos de 50 fichas, se le suben a 50. Las fichas apostadas sí se descuentan durante la ronda (puede verse un saldo menor mientras se juega).  
+- **Sin seguro (insurance) ni rendición (surrender)**, para mantener el alcance acotado.
+
+#### Qué debe implementar la lógica
+
+- **Modelo de cartas**: palo y rango como `enum class`, carta como `data class`.  
+- **Valor de la mano**: sumar los Ases como 1 y, si hay al menos un As y el total más 10 no supera 21, sumar 10. En ese caso la mano es **suave** (*soft*). Esto es necesario para la regla S17 y para mostrar al jugador, por ejemplo, "7 / 17".  
+- **Máquina de estados de la ronda**: apuesta → reparto → turno del jugador (una o dos manos) → turno del crupier → liquidación.  
+- **Validación de acciones**: cada acción solo es válida en ciertas fases y con ciertas condiciones (no se puede doblar con tres cartas, no se puede apostar más fichas de las que se tienen, etc.).  
+- **Liquidación**: calcular el resultado de cada mano y actualizar las fichas.  
+- **Mínimo de fichas**: tras la liquidación, las fichas nunca quedan por debajo de 50. Por eso la sesión no tiene derrota y `status` es siempre `"playing"`.  
+- **Aleatoriedad reproducible**: el barajado usa `kotlin.random.Random(seed)` con la semilla guardada en el estado, para poder reproducir rondas exactas en las pruebas. La librería estándar de Kotlin ya incluye `shuffled(random)`, así que no se necesitan dependencias externas.
+
+#### Modelo de fases con `sealed interface`
+
+La fase de la ronda se modela como una jerarquía cerrada. El compilador obliga a que todo `when` sobre la fase cubra todos los casos:
+
+```kotlin
+sealed interface Phase {
+    data object Betting : Phase
+    data class PlayerTurn(val activeHand: Int) : Phase
+    data object DealerTurn : Phase
+    data class RoundOver(val results: List<HandResult>) : Phase
+}
+
+enum class HandResult { BLACKJACK, WIN, PUSH, LOSE, BUST }
+```
+
+Cada acción es una función que recibe el estado actual y devuelve uno nuevo usando `copy()`, sin mutar el original:
+
+```kotlin
+fun applyAction(state: GameState, action: Action): Result<GameState>
+```
+
+Si la acción no es válida en la fase actual, devuelve un error en lugar de lanzar una excepción, y el servidor lo traduce a un `422`.
+
+#### Acciones
+
+| Acción | Fase válida | Cuerpo |
+| :---- | :---- | :---- |
+| Apostar | `Betting` | `{ "type": "bet", "amount": 50 }` |
+| Pedir carta | `PlayerTurn` | `{ "type": "hit" }` |
+| Plantarse | `PlayerTurn` | `{ "type": "stand" }` |
+| Doblar | `PlayerTurn`, mano de 2 cartas | `{ "type": "double" }` |
+| Dividir | `PlayerTurn`, par del mismo rango, sin haber dividido antes | `{ "type": "split" }` |
+| Nueva ronda | `RoundOver` | `{ "type": "next_round" }` |
+
+El turno del crupier no requiere acción del jugador: cuando el jugador termina con todas sus manos, el servidor juega el turno del crupier y liquida la ronda dentro de la misma respuesta.
+
+#### Formato del estado
+
+Como las cartas no forman una cuadrícula, `board` se envía como `null` y todo va en `data`:
+
+```json
+{
+  "id": "f4e9a1",
+  "game": "blackjack",
+  "status": "playing",
+  "board": null,
+  "data": {
+    "phase": "player_turn",
+    "chips": 950,
+    "dealer": {
+      "cards": [ { "rank": "K", "suit": "spades" }, { "hidden": true } ],
+      "value": null
+    },
+    "hands": [
+      {
+        "cards": [ { "rank": "A", "suit": "hearts" }, { "rank": "6", "suit": "clubs" } ],
+        "value": 17,
+        "soft": true,
+        "bet": 50,
+        "result": null
+      }
+    ],
+    "activeHand": 0,
+    "allowedActions": [ "hit", "stand", "double" ]
+  },
+  "message": null
+}
+```
+
+- **La carta oculta del crupier nunca se envía.** Se representa como `{ "hidden": true }` y su `value` es `null` hasta que se revela en el turno del crupier.  
+- **`allowedActions`** indica qué botones debe habilitar el frontend. Así React no necesita conocer las reglas para saber si se puede doblar o dividir.
+
+#### Por qué Kotlin
+
+Blackjack es un juego definido por **reglas y fases**: lo difícil no es el rendimiento sino evitar estados inválidos, como pedir carta en el turno del crupier o doblar con tres cartas. Kotlin ofrece `sealed interface` y `when` exhaustivo para modelar las fases, `data class` con `copy()` para estados inmutables y *null safety* para evitar errores con la carta oculta. Además, comparte la JVM con Java (Buscaminas), lo que permite comparar directamente cómo dos lenguajes de la misma plataforma expresan la misma clase de problema.
+
+#### Ventajas
+
+- `sealed interface` \+ `when` exhaustivo: el compilador detecta si alguna fase queda sin manejar.  
+- `data class` con `copy()` facilita la transición inmutable entre estados.  
+- El sistema de tipos distingue entre valores que pueden ser nulos y los que no, algo útil para la carta oculta y el resultado aún no definido.  
+- La librería estándar incluye colecciones funcionales (`sumOf`, `count`, `shuffled`), así que el código queda conciso.  
+- Ktor es ligero, arranca mucho más rápido que Spring Boot y se escribe en Kotlin idiomático.
+
+#### Desventajas
+
+- Al correr en la JVM, la imagen Docker y el consumo de memoria son mayores que en Go o Python.  
+- El tiempo de compilación con Gradle es lento, sobre todo en la primera construcción.  
+- El *split* complica la estructura: el estado pasa de una mano a una lista de manos, con un índice de mano activa.  
+- Como el contraste con Java es parte del interés, hay que vigilar que el código no termine pareciendo "Java con otra sintaxis".
+
+---
+
 ## 6\. Resumen comparativo
 
 | Juego | Lenguaje | Paradigma dominante | Tipo | Protocolo | Reto técnico principal |
@@ -644,8 +782,9 @@ Asteroids necesita un bucle de alta frecuencia, muchas entidades en movimiento y
 | Snake | Elixir | Funcional / actores | Tiempo real | WebSocket | Bucle de juego con procesos |
 | Tetris | C\# | Multiparadigma | Tiempo real | WebSocket | Rotaciones y concurrencia del estado |
 | Asteroids | Go | Imperativo / concurrente (CSP) | Tiempo real | WebSocket | Física con inercia y bucle a 60 Hz |
+| Blackjack | Kotlin | Multiparadigma (OO \+ funcional) | Turnos | REST | Máquina de estados y reglas de la mesa |
 
-La combinación cubre cinco estilos de programación distintos, lo cual es deseable para el objetivo de comparar cómo se expresa la lógica de un juego en cada uno.
+La combinación cubre seis estilos de programación distintos, lo cual es deseable para el objetivo de comparar cómo se expresa la lógica de un juego en cada uno.
 
 ---
 
@@ -707,6 +846,14 @@ Como uno de los objetivos es evaluar a la IA, conviene revisar cada servicio con
 - ¿La separación entre lógica y servidor se mantiene limpia?  
 - ¿Cuántas correcciones fueron necesarias hasta que funcionó?  
 - ¿Se gestionan bien los casos límite (giro de 180° en Snake, primer clic en Buscaminas, rotación junto a la pared en Tetris, colisiones cerca de los bordes envolventes en Asteroids)?
+- ¿Se gestionan bien los casos límite de Blackjack?
+  - Manos con varios Ases (por ejemplo, A \+ A \+ 9 debe valer 21).
+  - Diferenciar un Blackjack natural de un 21 con tres o más cartas.
+  - Crupier con Blackjack al repartir.
+  - Dividir Ases: una carta por mano y sin Blackjack.
+  - Doblar después de dividir.
+  - Rebarajado del zapato al llegar al 75 %.
+  - No poder apostar más fichas de las disponibles, incluido al doblar o dividir.
 
 ---
 

@@ -15,4 +15,5 @@ export const JUEGOS = [
   { id: 'snake', nombre: 'Snake', lenguaje: 'Elixir', color: 'violeta', ruta: '/juegos/snake' },
   { id: 'tetris', nombre: 'Tetris', lenguaje: 'C#', color: 'verde', ruta: '/juegos/tetris' },
   { id: 'asteroids', nombre: 'Asteroids', lenguaje: 'Go', color: 'celeste', ruta: '/juegos/asteroids' },
+  { id: 'blackjack', nombre: 'Blackjack', lenguaje: 'Kotlin', color: 'rosa', ruta: '/juegos/blackjack' },
 ];

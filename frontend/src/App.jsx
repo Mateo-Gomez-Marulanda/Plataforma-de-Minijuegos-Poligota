@@ -8,6 +8,7 @@ import JuegoSnake from './pages/JuegoSnake.jsx';
 import JuegoBuscaminas from './pages/JuegoBuscaminas.jsx';
 import JuegoTetris from './pages/JuegoTetris.jsx';
 import JuegoAsteroids from './pages/JuegoAsteroids.jsx';
+import JuegoBlackjack from './pages/JuegoBlackjack.jsx';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
       <Route path="/juegos/buscaminas" element={<JuegoBuscaminas />} />
       <Route path="/juegos/tetris" element={<JuegoTetris />} />
       <Route path="/juegos/asteroids" element={<JuegoAsteroids />} />
+      <Route path="/juegos/blackjack" element={<JuegoBlackjack />} />
       <Route path="/creditos" element={<Creditos />} />
       <Route path="*" element={<Inicio />} />
     </Routes>

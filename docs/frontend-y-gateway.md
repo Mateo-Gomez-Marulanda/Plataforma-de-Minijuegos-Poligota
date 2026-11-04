@@ -15,8 +15,9 @@ Es la **puerta de entrada a los servicios**. Recibe las peticiones que le reenv�
 | `/ws/snake` | `ws://snake-service:8003/ws` | WebSocket |
 | `/ws/tetris` | `ws://tetris-service:8004/ws` | WebSocket |
 | `/ws/asteroids` | `ws://asteroids-service:8005/ws` | WebSocket |
+| `/api/blackjack/*` | `http://blackjack-service:8006/*` | HTTP |
 
-Los destinos se pueden cambiar con las variables de entorno `SUDOKU_URL`, `BUSCAMINAS_URL`, `SNAKE_URL`, `TETRIS_URL` y `ASTEROIDS_URL`. Por defecto usan los nombres de servicio de Docker Compose, que la red interna resuelve a la dirección de cada contenedor.
+Los destinos se pueden cambiar con las variables de entorno `SUDOKU_URL`, `BUSCAMINAS_URL`, `SNAKE_URL`, `TETRIS_URL`, `ASTEROIDS_URL` y `BLACKJACK_URL`. Por defecto usan los nombres de servicio de Docker Compose, que la red interna resuelve a la dirección de cada contenedor.
 
 ### Tecnologías
 
@@ -87,10 +88,11 @@ frontend/src/
 │   ├── websocket.js         cliente WebSocket genérico
 │   ├── sudoku.js            llamadas REST de Sudoku
 │   ├── buscaminas.js        llamadas REST de Buscaminas
+│   ├── blackjack.js         llamadas REST de Blackjack
 │   ├── snake.js             WebSocket de Snake (/ws/snake)
 │   ├── tetris.js            WebSocket de Tetris (/ws/tetris)
 │   └── asteroids.js         WebSocket de Asteroids (/ws/asteroids)
-├── games/                   un componente por juego (Sudoku, Buscaminas, Snake, Tetris, Asteroids)
+├── games/                   un componente por juego (Sudoku, Buscaminas, Snake, Tetris, Asteroids, Blackjack)
 ├── pages/                   una pantalla por ruta (Inicio, Juegos, Créditos, un marco por juego)
 ├── components/              piezas reutilizables (Fichas, Pagina, Autor)
 └── styles.css
@@ -101,8 +103,8 @@ frontend/src/
 | Ruta | Contenido |
 | :---- | :---- |
 | `/` | Bienvenida con los botones de minijuegos, GitHub y créditos |
-| `/juegos` | Los cinco juegos |
-| `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids` | Cada juego |
+| `/juegos` | Los seis juegos |
+| `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids`, `/juegos/blackjack` | Cada juego |
 | `/creditos` | Autores y tecnologías |
 
 La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de escenario dentro de la misma web.
@@ -127,7 +129,7 @@ server: {
 
 `allowedHosts: true` hace falta porque Vite rechaza por defecto los nombres de host que no conoce (como el de un túnel de VS Code), con un `403 Blocked request`.
 
-**REST (Sudoku y Buscaminas).** `api/cliente.js` envuelve `fetch`: usa la dirección de `VITE_API_URL` si se define (por defecto vacía, es decir, el mismo origen), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
+**REST (Sudoku, Buscaminas y Blackjack).** `api/cliente.js` envuelve `fetch`: usa la dirección de `VITE_API_URL` si se define (por defecto vacía, es decir, el mismo origen), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
 
 **WebSocket (Snake, Tetris y Asteroids).** `api/websocket.js` abre `new WebSocket(...)` contra el mismo host que la página (`ws://` si es `http://`, `wss://` si es `https://`) y traduce los mensajes del servidor a funciones: `onEstado` para cada `state`, `onFin` para `game_over`, `onError` y `onCierre`. Devuelve acciones (`empezar`, `tecla`, `pausar`, `reanudar`, `cerrar`). `tecla(key, pressed)` acepta un segundo parámetro opcional que usa Asteroids para avisar al pulsar y al soltar una tecla.
 

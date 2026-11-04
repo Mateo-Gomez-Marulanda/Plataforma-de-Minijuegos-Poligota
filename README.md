@@ -1,6 +1,6 @@
 # Plataforma de Minijuegos Políglota
 
-Sudoku (Python), Buscaminas (Java), Snake (Elixir), Tetris (C#) y Asteroids (Go), cada uno como servicio independiente detrás de un gateway Node.js, con un único frontend React.
+Sudoku (Python), Buscaminas (Java), Snake (Elixir), Tetris (C#), Asteroids (Go) y Blackjack (Kotlin), cada uno como servicio independiente detrás de un gateway Node.js, con un único frontend React.
 
 Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos.md)
 
@@ -15,6 +15,7 @@ Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos
 | [docs/snake-elixir.md](docs/snake-elixir.md) | Snake por dentro: Elixir, OTP, Bandit y Plug |
 | [docs/tetris-csharp.md](docs/tetris-csharp.md) | Tetris por dentro: C#, ASP.NET Core y WebSockets |
 | [docs/asteroids-go.md](docs/asteroids-go.md) | Asteroids por dentro: Go, goroutines y WebSockets |
+| [docs/blackjack-kotlin.md](docs/blackjack-kotlin.md) | Blackjack por dentro: Kotlin, Ktor y la máquina de estados |
 | [docs/frontend-y-gateway.md](docs/frontend-y-gateway.md) | React, Vite y el gateway de Node |
 
 ## Ejecución del programa
@@ -26,7 +27,7 @@ La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
 Requiere Node.js 22 o superior. Cada juego necesita su servicio y el gateway; levántalos con Docker y la web con Vite:
 
 ```sh
-docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service
+docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service
 cd frontend
 npm install
 npm run dev
@@ -36,10 +37,10 @@ Sin el backend la web también abre, pero Sudoku y Snake muestran "No se pudo co
 
 **Opción B: todo en Docker**
 
-Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake, Buscaminas, Tetris y Asteroids):
+Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake, Buscaminas, Tetris, Asteroids y Blackjack):
 
 ```sh
-docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service
+docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service
 ```
 
 El gateway queda en http://localhost:3000.
@@ -63,7 +64,7 @@ docker compose down              # detener
 
 ## Estado
 
-Todo implementado: gateway, los cinco servicios (Sudoku en Python, Buscaminas en Java, Snake en Elixir, Tetris en C# y Asteroids en Go) y el frontend con los cinco juegos jugables, el inicio y los créditos.
+Todo implementado: gateway, los seis servicios (Sudoku en Python, Buscaminas en Java, Snake en Elixir, Tetris en C#, Asteroids en Go y Blackjack en Kotlin) y el frontend con los seis juegos jugables, el inicio y los créditos.
 
 ## Desarrollo local del Sudoku
 
@@ -148,3 +149,15 @@ go run .                  # servicio en http://localhost:8005
 ```
 
 Para jugar no hace falta nada de esto: la imagen del servicio (`docker build -t asteroids services/asteroids-go`) compila dentro de Docker.
+
+## Desarrollo local de Blackjack
+
+Con Gradle y un JDK 21 instalados (en Arch: `sudo pacman -S gradle jdk21-openjdk`):
+
+```sh
+cd services/blackjack-kotlin
+gradle test               # pruebas
+gradle run                # servicio en http://localhost:8006
+```
+
+Gradle usa el JDK 21 aunque el predeterminado del sistema sea otro (lo fija un *toolchain*). Para jugar no hace falta nada de esto: la imagen del servicio (`docker build -t blackjack services/blackjack-kotlin`) compila dentro de Docker.

@@ -13,6 +13,8 @@
   --violeta: #a06cde;
   --verde: #3dbe8b;
   --celeste: #4fb8e8;
+  --rosa: #e8709f;
+  --fieltro: #1f6b55;
 
   --fuente-titulo: 'Unbounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
   --fuente-texto: 'Hanken Grotesk', system-ui, sans-serif;
@@ -63,6 +65,7 @@ a:focus-visible {
 .ficha--violeta { background: var(--violeta); }
 .ficha--verde { background: var(--verde); }
 .ficha--celeste { background: var(--celeste); }
+.ficha--rosa { background: var(--rosa); }
 
 /* Las fichas de la pantalla de inicio caen en orden, como piezas de Tetris */
 .fichas--cae .ficha {
@@ -215,6 +218,7 @@ a:focus-visible {
 .juego--violeta { background: var(--violeta); }
 .juego--verde { background: var(--verde); }
 .juego--celeste { background: var(--celeste); }
+.juego--rosa { background: var(--rosa); }
 
 .juego__nombre {
   font-family: var(--fuente-titulo);
@@ -303,6 +307,7 @@ a:focus-visible {
 .tecnologia--violeta { border-left-color: var(--violeta); }
 .tecnologia--verde { border-left-color: var(--verde); }
 .tecnologia--celeste { border-left-color: var(--celeste); }
+.tecnologia--rosa { border-left-color: var(--rosa); }
 
 .tecnologia dt {
   color: var(--papel-tenue);
@@ -453,7 +458,8 @@ a:focus-visible {
 .snake__aviso,
 .buscaminas__aviso,
 .tetris__aviso,
-.asteroids__aviso {
+.asteroids__aviso,
+.blackjack__aviso {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -697,6 +703,138 @@ a:focus-visible {
 @media (pointer: coarse) {
   .asteroids__cruceta { display: grid; }
 }
+
+/* ---------- Blackjack ---------- */
+
+.blackjack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  max-width: 46rem;
+}
+
+.blackjack p { margin: 0; }
+
+.blackjack__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.blackjack__fichas { display: flex; align-items: baseline; gap: 0.6rem; color: var(--papel-tenue); }
+
+.blackjack__fichas strong {
+  font-family: var(--fuente-titulo);
+  font-size: 1.8rem;
+  color: var(--papel);
+}
+
+.blackjack__mesa {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.2rem;
+  border-radius: 0.8rem;
+  background: var(--fieltro);
+}
+
+.blackjack__zona h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin: 0 0 0.6rem;
+  font: 600 1rem var(--fuente-texto);
+  color: var(--papel-tenue);
+}
+
+.blackjack__valor { color: var(--papel); font-family: var(--fuente-titulo); }
+.blackjack__vacio { color: var(--papel-tenue); }
+
+.blackjack__manos { display: flex; flex-wrap: wrap; gap: 1rem; }
+
+.blackjack__mano {
+  padding: 0.6rem;
+  border: 2px solid transparent;
+  border-radius: 0.6rem;
+}
+
+.blackjack__mano--activa { border-color: var(--amarillo); }
+
+.blackjack__cartas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 5.2rem;
+}
+
+.carta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 3.6rem;
+  height: 5.2rem;
+  padding: 0.35rem 0;
+  border-radius: 0.4rem;
+  background: var(--papel);
+  color: var(--tinta);
+  font: 700 1.3rem var(--fuente-texto);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.35);
+}
+
+.carta--roja { color: #c62828; }
+
+.carta--oculta {
+  background: repeating-linear-gradient(45deg, var(--superficie) 0 6px, var(--tablero) 6px 12px);
+  border: 3px solid var(--papel);
+}
+
+.blackjack__detalle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.5rem !important;
+}
+
+.blackjack__detalle span:first-child { font-family: var(--fuente-titulo); }
+.blackjack__detalle span:nth-child(2) { color: var(--papel-tenue); }
+
+.blackjack__resultado--win,
+.blackjack__resultado--blackjack { color: var(--amarillo); }
+.blackjack__resultado--lose,
+.blackjack__resultado--bust { color: #ffb4a8; }
+
+.blackjack__apuesta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.blackjack__apuesta label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--papel-tenue);
+}
+
+.blackjack__apuesta input {
+  width: 7rem;
+  padding: 0.7rem;
+  border: 2px solid var(--papel);
+  border-radius: 0.5rem;
+  background: var(--tinta);
+  color: var(--papel);
+  font: 600 1.0625rem var(--fuente-texto);
+}
+
+.blackjack__fichas-rapidas,
+.blackjack__acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.boton:disabled { opacity: 0.4; cursor: not-allowed; }
+.boton:disabled:hover { background: transparent; color: var(--papel); }
 
 /* ---------- Buscaminas ---------- */
 
