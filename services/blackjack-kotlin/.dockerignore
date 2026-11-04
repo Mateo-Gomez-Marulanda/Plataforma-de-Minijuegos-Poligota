@@ -1,0 +1,4 @@
+# Excluye del build de Docker lo compilado localmente.
+build/
+.gradle/
+.kotlin/

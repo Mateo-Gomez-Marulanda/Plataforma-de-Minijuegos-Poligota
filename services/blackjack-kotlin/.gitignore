@@ -1,0 +1,6 @@
+# Archivos que git no debe versionar: compilados de Gradle/Kotlin e IDEs.
+build/
+.gradle/
+.kotlin/
+.idea/
+*.iml

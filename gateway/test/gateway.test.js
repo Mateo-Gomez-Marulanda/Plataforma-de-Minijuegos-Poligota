@@ -112,3 +112,10 @@ test('buildRoutes: /ws/asteroids apunta a asteroids-service:8005', () => {
   assert.deepEqual(ruta(buildRoutes({})), { prefix: '/ws/asteroids', target: 'http://asteroids-service:8005', rewrite: '/ws', ws: true });
   assert.equal(ruta(buildRoutes({ ASTEROIDS_URL: 'http://localhost:9' })).target, 'http://localhost:9');
 });
+
+// Blackjack es REST: /api/blackjack/* llega al servicio sin el prefijo, y su destino se puede sobrescribir.
+test('buildRoutes: /api/blackjack apunta a blackjack-service:8006', () => {
+  const ruta = (r) => r.find((x) => x.prefix === '/api/blackjack');
+  assert.deepEqual(ruta(buildRoutes({})), { prefix: '/api/blackjack', target: 'http://blackjack-service:8006', rewrite: '' });
+  assert.equal(ruta(buildRoutes({ BLACKJACK_URL: 'http://localhost:9' })).target, 'http://localhost:9');
+});
