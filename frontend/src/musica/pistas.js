@@ -12,6 +12,7 @@ export const PISTAS = {
   tetris: '/musica/tetris.mp3',
   asteroids: '/musica/asteroids.mp3',
   blackjack: '/musica/blackjack.mp3',
+  rustlike: null, // la música la pone el usuario más adelante
 };
 
 // De dónde salió cada canción (se muestra en la sección «Soundtracks» de los créditos). La clave es el id del juego.

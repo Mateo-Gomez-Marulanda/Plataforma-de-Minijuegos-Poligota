@@ -15,11 +15,12 @@ test('el catálogo no tiene entradas de juegos que no existen', () => {
 
 test('cada pista es una ruta pública dentro de /musica/ y el archivo existe', () => {
   for (const [juego, ruta] of Object.entries(PISTAS)) {
+    if (ruta === null) continue; // sin música todavía
     expect(ruta, juego).toMatch(/^\/musica\/.+\.(mp3|ogg|wav|m4a)$/);
     expect(existsSync(`public${ruta}`), ruta).toBe(true);
   }
 });
 
 test('cada juego tiene el enlace de su soundtrack', () => {
-  for (const juego of JUEGOS) expect(FUENTES[juego.id], juego.id).toMatch(/^https:\/\//);
+  for (const juego of JUEGOS.filter((j) => PISTAS[j.id] !== null)) expect(FUENTES[juego.id], juego.id).toMatch(/^https:\/\//);
 });

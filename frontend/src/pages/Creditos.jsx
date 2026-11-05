@@ -40,9 +40,13 @@ export default function Creditos() {
           {JUEGOS.map((j) => (
             <li key={j.id} className={`tecnologia tecnologia--${j.color}`}>
               <span>{j.nombre}</span>
-              <a href={FUENTES[j.id]} target="_blank" rel="noopener noreferrer">
-                Escuchar la canción
-              </a>
+              {FUENTES[j.id] ? (
+                <a href={FUENTES[j.id]} target="_blank" rel="noopener noreferrer">
+                  Escuchar la canción
+                </a>
+              ) : (
+                <span>Sin música todavía</span>
+              )}
             </li>
           ))}
         </ul>

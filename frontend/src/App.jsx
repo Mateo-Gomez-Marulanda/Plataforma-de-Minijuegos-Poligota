@@ -9,6 +9,7 @@ import JuegoBuscaminas from './pages/JuegoBuscaminas.jsx';
 import JuegoTetris from './pages/JuegoTetris.jsx';
 import JuegoAsteroids from './pages/JuegoAsteroids.jsx';
 import JuegoBlackjack from './pages/JuegoBlackjack.jsx';
+import JuegoRustlike from './pages/JuegoRustlike.jsx';
 import { MusicaProvider } from './musica/MusicaContext.jsx';
 import BotonMusica from './musica/BotonMusica.jsx';
 
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/juegos/tetris" element={<JuegoTetris />} />
         <Route path="/juegos/asteroids" element={<JuegoAsteroids />} />
         <Route path="/juegos/blackjack" element={<JuegoBlackjack />} />
+        <Route path="/juegos/rustlike" element={<JuegoRustlike />} />
         <Route path="/creditos" element={<Creditos />} />
         <Route path="*" element={<Inicio />} />
       </Routes>

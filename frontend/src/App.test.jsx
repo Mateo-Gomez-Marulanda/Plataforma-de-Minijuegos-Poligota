@@ -50,7 +50,7 @@ test('una ruta desconocida lleva al inicio', () => {
   expect(screen.getByRole('link', { name: 'Ir a los minijuegos' })).toBeTruthy();
 });
 
-test('en Minijuegos los seis juegos son enlaces jugables', () => {
+test('en Minijuegos los siete juegos son enlaces jugables', () => {
   en('/juegos');
   expect(screen.getByRole('link', { name: /Sudoku/ }).getAttribute('href')).toBe('/juegos/sudoku');
   expect(screen.getByRole('link', { name: /Buscaminas/ }).getAttribute('href')).toBe('/juegos/buscaminas');
@@ -58,6 +58,7 @@ test('en Minijuegos los seis juegos son enlaces jugables', () => {
   expect(screen.getByRole('link', { name: /Tetris/ }).getAttribute('href')).toBe('/juegos/tetris');
   expect(screen.getByRole('link', { name: /Asteroids/ }).getAttribute('href')).toBe('/juegos/asteroids');
   expect(screen.getByRole('link', { name: /Blackjack/ }).getAttribute('href')).toBe('/juegos/blackjack');
+  expect(screen.getByRole('link', { name: /Rust Like/ }).getAttribute('href')).toBe('/juegos/rustlike');
   expect(screen.queryByText('Disponible pronto')).toBeNull();
 });
 
@@ -83,7 +84,7 @@ test('si falta una imagen de los créditos se muestra un recuadro con la inicial
   expect(screen.getByRole('img', { name: 'Imagen de Ultron (Claude Code)' }).textContent).toBe('U');
 });
 
-test.each(['sudoku', 'buscaminas', 'snake', 'tetris', 'asteroids', 'blackjack'])('la pantalla de %s tiene el botón «Volver a minijuegos»', (juego) => {
+test.each(['sudoku', 'buscaminas', 'snake', 'tetris', 'asteroids', 'blackjack', 'rustlike'])('la pantalla de %s tiene el botón «Volver a minijuegos»', (juego) => {
   en(`/juegos/${juego}`);
   expect(screen.getByRole('link', { name: 'Volver a minijuegos' }).getAttribute('href')).toBe('/juegos');
 });
@@ -96,7 +97,7 @@ test('Minijuegos y Créditos no muestran el botón «Volver a minijuegos»', () 
   expect(screen.queryByRole('link', { name: 'Volver a minijuegos' })).toBeNull();
 });
 
-test.each(['/', '/juegos', '/creditos', '/juegos/sudoku', '/juegos/tetris', '/juegos/blackjack'])('la pantalla %s tiene el botón de música', (ruta) => {
+test.each(['/', '/juegos', '/creditos', '/juegos/sudoku', '/juegos/tetris', '/juegos/blackjack', '/juegos/rustlike'])('la pantalla %s tiene el botón de música', (ruta) => {
   en(ruta);
   expect(screen.getByRole('button', { name: /^Música: desactivada/ })).toBeTruthy();
 });

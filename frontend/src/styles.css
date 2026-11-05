@@ -14,6 +14,7 @@
   --verde: #3dbe8b;
   --celeste: #4fb8e8;
   --rosa: #e8709f;
+  --oxido: #c8642a;
   --fieltro: #1f6b55;
 
   --fuente-titulo: 'Unbounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
@@ -66,6 +67,7 @@ a:focus-visible {
 .ficha--verde { background: var(--verde); }
 .ficha--celeste { background: var(--celeste); }
 .ficha--rosa { background: var(--rosa); }
+.ficha--oxido { background: var(--oxido); }
 
 /* Las fichas de la pantalla de inicio caen en orden, como piezas de Tetris */
 .fichas--cae .ficha {
@@ -231,6 +233,7 @@ a:focus-visible {
 .juego--verde { background: var(--verde); }
 .juego--celeste { background: var(--celeste); }
 .juego--rosa { background: var(--rosa); }
+.juego--oxido { background: var(--oxido); }
 
 .juego__nombre {
   font-family: var(--fuente-titulo);
@@ -345,6 +348,7 @@ a:focus-visible {
 .tecnologia--verde { border-left-color: var(--verde); }
 .tecnologia--celeste { border-left-color: var(--celeste); }
 .tecnologia--rosa { border-left-color: var(--rosa); }
+.tecnologia--oxido { border-left-color: var(--oxido); }
 
 .tecnologia dt {
   color: var(--papel-tenue);
@@ -1080,3 +1084,54 @@ a:focus-visible {
 .boton-musica__nota { text-decoration: line-through; }
 .boton-musica--activa .boton-musica__nota { text-decoration: none; color: var(--verde); }
 
+
+/* ---------- Rust Like ---------- */
+
+.rustlike {
+  --almacen-suelo: #5a5048;
+  --almacen-muro: #2a2623;
+  --almacen-escalera: #f4c430;
+  --almacen-niebla: rgba(20, 25, 58, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 60rem;
+}
+
+.rustlike p { margin: 0; }
+
+.rustlike__aviso { display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; }
+
+.rustlike__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rustlike__datos { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; color: var(--papel-tenue); }
+.rustlike__datos strong { color: var(--papel); font-family: var(--fuente-titulo); }
+
+.rustlike__log { margin: 0.5rem 0 0; padding: 0; list-style: none; color: var(--papel-tenue); font-size: 0.9rem; }
+
+.rustlike__botones { display: flex; gap: 0.6rem; }
+
+.rustlike__piso {
+  width: 100%;
+  height: auto;
+  background: #14110f;
+  border-radius: 0.5rem;
+  shape-rendering: crispEdges;
+}
+
+.casilla--floor { fill: var(--almacen-suelo); }
+.casilla--wall { fill: var(--almacen-muro); }
+.casilla--stairs { fill: var(--almacen-escalera); }
+/* Casilla vista pero fuera del campo de visión actual */
+.casilla--niebla { opacity: 0.45; }
+
+.robot rect { fill: var(--oxido); }
+.robot__ojo { fill: var(--tinta); }
+
+.rustlike__ayuda { color: var(--papel-tenue); font-size: 0.85rem; }

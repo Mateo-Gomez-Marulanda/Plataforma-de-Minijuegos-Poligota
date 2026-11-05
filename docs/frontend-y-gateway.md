@@ -90,10 +90,11 @@ frontend/src/
 │   ├── sudoku.js            llamadas REST de Sudoku
 │   ├── buscaminas.js        llamadas REST de Buscaminas
 │   ├── blackjack.js         llamadas REST de Blackjack
+│   ├── rustlike.js          llamadas REST de Rust Like
 │   ├── snake.js             WebSocket de Snake (/ws/snake)
 │   ├── tetris.js            WebSocket de Tetris (/ws/tetris)
 │   └── asteroids.js         WebSocket de Asteroids (/ws/asteroids)
-├── games/                   un componente por juego (Sudoku, Buscaminas, Snake, Tetris, Asteroids, Blackjack)
+├── games/                   un componente por juego (Sudoku, Buscaminas, Snake, Tetris, Asteroids, Blackjack, Rust Like)
 ├── pages/                   una pantalla por ruta (Inicio, Juegos, Créditos, un marco por juego)
 ├── components/              piezas reutilizables (Fichas, Pagina, Autor)
 ├── musica/                  catálogo de pistas, reproductor, estado global y botón de música
@@ -125,9 +126,11 @@ Cada pantalla de juego le dice a `Pagina` qué juego es con `musica="tetris"`; a
 | Ruta | Contenido |
 | :---- | :---- |
 | `/` | Bienvenida con los botones de minijuegos, GitHub y créditos |
-| `/juegos` | Los seis juegos |
-| `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids`, `/juegos/blackjack` | Cada juego |
+| `/juegos` | Los siete juegos |
+| `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids`, `/juegos/blackjack`, `/juegos/rustlike` | Cada juego |
 | `/creditos` | Autores, tecnologías y soundtracks (enlaces a las canciones) |
+
+**Controles de Rust Like:** flechas o WASD mueven; Q, E, Z y C son las diagonales; espacio o `.` esperan; Enter o `>` bajan (también el botón «Bajar», visible solo sobre la escalera). Mientras hay una petición en curso se ignoran las teclas. No tiene música todavía (`PISTAS.rustlike` es `null`).
 
 La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de escenario dentro de la misma web.
 
@@ -153,7 +156,7 @@ server: {
 
 `allowedHosts: true` hace falta porque Vite rechaza por defecto los nombres de host que no conoce (como el de un túnel de VS Code), con un `403 Blocked request`.
 
-**REST (Sudoku, Buscaminas y Blackjack).** `api/cliente.js` envuelve `fetch`: usa la dirección de `VITE_API_URL` si se define (por defecto vacía, es decir, el mismo origen), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
+**REST (Sudoku, Buscaminas, Blackjack y Rust Like).** `api/cliente.js` envuelve `fetch`: usa la dirección de `VITE_API_URL` si se define (por defecto vacía, es decir, el mismo origen), envía el cuerpo como JSON y convierte los fallos en un único tipo de error (`ErrorApi`) con el mensaje del contrato `{error, message}` o uno de "sin conexión".
 
 **WebSocket (Snake, Tetris y Asteroids).** `api/websocket.js` abre `new WebSocket(...)` contra el mismo host que la página (`ws://` si es `http://`, `wss://` si es `https://`) y traduce los mensajes del servidor a funciones: `onEstado` para cada `state`, `onFin` para `game_over`, `onError` y `onCierre`. Devuelve acciones (`empezar`, `tecla`, `pausar`, `reanudar`, `cerrar`). `tecla(key, pressed)` acepta un segundo parámetro opcional que usa Asteroids para avisar al pulsar y al soltar una tecla.
 
