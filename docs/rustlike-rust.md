@@ -146,7 +146,7 @@ Cambian la forma de jugar en lugar de solo mejorar números:
 
 ### 4.3 Bonos de conjunto
 
-Cada pieza pertenece a un **fabricante**. Llevar dos o más piezas del mismo fabricante activa un efecto extra. Los fabricantes y sus bonos están pendientes de definir (sección 14).
+Cada pieza pertenece a un **fabricante**. Llevar dos o más piezas del mismo fabricante activa un efecto extra. Los fabricantes y sus bonos están pendientes de definir (sección 17).
 
 ---
 
@@ -205,6 +205,13 @@ Los ataques **siempre aciertan**. El azar solo interviene en:
 - **Lenta**: actúa uno de cada dos turnos (contador interno).
 - **Veloz**: actúa dos veces por turno (solo élites, sección 7.2).
 
+### 6.6 Puntaje
+
+Destruir a un enemigo y completar un piso valen lo mismo: **20 puntos**, más **5 cada 50 pisos** (pisos 1–50: 20, 51–100: 25, 101–150: 30… 251–255: 40). Se usa el valor del piso en el que ocurre el hecho.
+
+- Al bajar por la escalera cuenta el piso completado (el que se deja atrás).
+- Una caída por hueco de ascensor suma un piso completado por cada piso caído.
+
 ---
 
 ## 7. Enemigos
@@ -219,7 +226,7 @@ Los ataques **siempre aciertan**. El azar solo interviene en:
 | Robot oxidado | 60 | 10 | Lenta | Al destruirse suelta una de sus piezas |
 | Gotera | Indestructible | — | Inmóvil | Crea charcos a su alrededor con el tiempo |
 
-La integridad y el golpe escalan con el número de piso. Cada zona añade enemigos propios (pendiente de definir, sección 14).
+La integridad y el golpe escalan con el número de piso. Cada zona añade enemigos propios (pendiente de definir, sección 17).
 
 ### 7.2 Enemigos élite
 
@@ -427,18 +434,25 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
       "core":    { "name": "basic", "corrosion": 35 }
     },
     "items": ["oil_can", null, "grease"],
+    "allowedActions": ["move", "wait"],
+    "events": ["player_hit", "part_degraded"],
     "log": ["El ácaro de óxido te muerde. Sensores +6."],
     "score": 4120
   },
-  "events": ["player_hit", "part_degraded"]
+  "message": null
 }
 ```
 
+- Sigue el contrato común de los minijuegos: en la raíz solo `id`, `game`, `status`, `board`, `data` y `message`; todo lo demás va dentro de `data`.
 - `status`: `"playing"`, `"won"` o `"lost"`.
 - `board`: tipo de cada casilla. Las nunca vistas son `"unknown"`.
-- `visible`: casillas dentro del campo de visión actual.
-- `entities`: solo lo visible o detectado por sensores térmicos.
-- `events`: lo ocurrido en el turno, usado únicamente para animaciones.
+- `message`: `null` en las respuestas correctas.
+- `data.visible`: casillas dentro del campo de visión actual.
+- `data.entities`: solo lo visible o detectado por sensores térmicos (vacío en la fase 1).
+- `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera).
+- `data.events`: lo ocurrido en el turno, usado únicamente para animaciones.
+- `data.log`: últimas 20 entradas del registro de mensajes.
+- `data.score`: puntaje acumulado (sección 6.6).
 
 **El servidor nunca envía información que el jugador no puede ver**: ni el mapa completo, ni enemigos fuera de visión, ni el contenido del piso siguiente (salvo el símbolo de las escaleras).
 
@@ -558,7 +572,6 @@ services/rustlike-rust/
 
 - Tono y estilo visual definitivos.
 - Balance de todos los valores numéricos.
-- Fórmula de puntaje.
 - Escalado de enemigos por piso.
 - Enemigos propios de cada zona.
 - Jefes de zona de los pisos 50, 100, 200 y 250.
