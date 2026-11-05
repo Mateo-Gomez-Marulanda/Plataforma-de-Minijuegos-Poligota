@@ -161,3 +161,15 @@ gradle run                # servicio en http://localhost:8006
 ```
 
 Gradle usa el JDK 21 aunque el predeterminado del sistema sea otro (lo fija un *toolchain*). Para jugar no hace falta nada de esto: la imagen del servicio (`docker build -t blackjack services/blackjack-kotlin`) compila dentro de Docker.
+
+## Desarrollo local de Rust Like
+
+Con Rust instalado (en Arch: `sudo pacman -S rust`):
+
+```sh
+cd services/rustlike-rust
+cargo test                # pruebas
+cargo run                 # servicio en http://localhost:8007 (PORT cambia el puerto)
+```
+
+Para jugar no hace falta nada de esto: la imagen del servicio (`docker build -t rustlike services/rustlike-rust`) compila dentro de Docker.
