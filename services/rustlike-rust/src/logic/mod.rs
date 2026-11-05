@@ -123,9 +123,9 @@ fn apply_corrosion(state: &mut GameState, slot: Slot, base: u32, events: &mut Ve
     events.push(Event::PartDegraded);
     if hit.transferred {
         let text = format!(
-            "{} ya {}: el óxido pasa al núcleo. Núcleo +{}.",
+            "{} ya están {}: el óxido pasa al núcleo. Núcleo +{}.",
             slot.name(),
-            blocked_word(slot).replace("bloquea", "están bloquea"),
+            blocked_word(slot),
             hit.amount
         );
         push_log(state, text);
