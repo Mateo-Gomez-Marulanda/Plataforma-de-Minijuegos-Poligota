@@ -23,6 +23,8 @@ use rand::{RngExt, SeedableRng};
 
 /// Máximo de entradas que conserva el registro.
 pub const LOG_LIMIT: usize = 20;
+/// Pisos a los que permite viajar el modo de prueba (inicio de cada rango de zonas y el final).
+pub const WARP_FLOORS: [u8; 7] = [1, 50, 100, 150, 200, 250, 255];
 
 /// Crea una partida en el piso 1 a partir de la semilla.
 pub fn new_game(seed: u64) -> GameState {
@@ -85,6 +87,7 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
         }
         Action::Wait => {}
         Action::Descend => return descend(state),
+        Action::Warp { floor } => return warp(state, floor),
         Action::Pick => pick(state, &mut events)?,
         Action::Swap => swap(state, &mut events)?,
         Action::Use { slot, target } => use_item(state, slot, target, &mut events)?,
@@ -309,23 +312,42 @@ fn descend(state: &mut GameState) -> Result<Vec<Event>, InvalidMove> {
     let next = state.floor.checked_add(1).ok_or_else(|| {
         InvalidMove("No se puede bajar más: el piso 255 es el último.".to_string())
     })?;
-    let level = generate(next, &mut state.rng);
-    let entities = spawn::populate(next, &level, &mut state.rng, &mut state.next_id);
     state.score += score::points_for_floor(state.floor);
-    state.floor = next;
-    state.zone = Zone::for_floor(next);
+    Ok(enter_floor(state, next, format!("Bajas al piso {next}.")))
+}
+
+/// Modo de prueba: viaja directamente a uno de los pisos de `WARP_FLOORS`, sin sumar puntos.
+fn warp(state: &mut GameState, floor: u8) -> Result<Vec<Event>, InvalidMove> {
+    if !WARP_FLOORS.contains(&floor) {
+        return Err(InvalidMove(
+            "Solo se puede viajar a los pisos 1, 50, 100, 150, 200, 250 o 255.".to_string(),
+        ));
+    }
+    Ok(enter_floor(
+        state,
+        floor,
+        format!("Modo de prueba: viajas al piso {floor}."),
+    ))
+}
+
+/// Genera y puebla el piso `floor`, coloca al robot en su inicio y cierra el turno.
+fn enter_floor(state: &mut GameState, floor: u8, log: String) -> Vec<Event> {
+    let level = generate(floor, &mut state.rng);
+    let entities = spawn::populate(floor, &level, &mut state.rng, &mut state.next_id);
+    state.floor = floor;
+    state.zone = Zone::for_floor(floor);
     state.seen = vec![vec![false; level.map.width]; level.map.height];
     state.player = level.start;
     state.stairs = level.stairs;
     state.map = level.map;
     state.entities = entities;
     state.turn += 1;
-    push_log(state, format!("Bajas al piso {next}."));
+    push_log(state, log);
     let mut events = vec![Event::FloorDescended];
     // La visión del piso anterior no sirve para el imán de este turno.
     refresh_vision(state);
     end_turn(state, &mut events);
-    Ok(events)
+    events
 }
 
 /// Aplica corrosión a una pieza, la anota en el registro (con `prefix` delante del
@@ -1733,5 +1755,42 @@ mod tests {
         s.body.sensors.corrosion = 100;
         refresh_vision(&mut s);
         assert!(!s.visible[10][15] && !s.visible[10][8]);
+    }
+
+    // --- Modo de prueba: viajar a un piso ---
+
+    #[test]
+    fn warp_goes_to_each_allowed_floor_without_points() {
+        for floor in WARP_FLOORS {
+            let mut s = new_game(3);
+            let r = apply_action(&mut s, Action::Warp { floor });
+            assert_eq!(r, Ok(vec![Event::FloorDescended]), "piso {floor}");
+            assert_eq!(s.floor, floor);
+            assert_eq!(s.zone, Zone::for_floor(floor));
+            assert_eq!(s.score, 0);
+            assert_eq!(s.turn, 1);
+            assert_eq!(s.stairs.is_none(), floor == 255);
+            let (w, h) = Zone::for_floor(floor).size();
+            assert_eq!((s.map.width, s.map.height), (w, h));
+            assert_eq!(
+                s.log.last().unwrap(),
+                &format!("Modo de prueba: viajas al piso {floor}.")
+            );
+        }
+    }
+
+    #[test]
+    fn warp_to_other_floor_is_rejected_and_changes_nothing() {
+        let mut s = new_game(3);
+        let mut twin = new_game(3);
+        let r = apply_action(&mut s, Action::Warp { floor: 7 });
+        assert_eq!(
+            r,
+            Err(InvalidMove(
+                "Solo se puede viajar a los pisos 1, 50, 100, 150, 200, 250 o 255.".to_string()
+            ))
+        );
+        assert_eq!((s.floor, s.turn), (1, 0));
+        assert_eq!(s.rng.random::<u64>(), twin.rng.random::<u64>());
     }
 }

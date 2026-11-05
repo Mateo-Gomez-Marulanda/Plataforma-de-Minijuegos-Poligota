@@ -6,12 +6,21 @@ use serde::Deserialize;
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
-    Move { dir: Dir },
+    Move {
+        dir: Dir,
+    },
     Wait,
     Descend,
     Pick,
     Swap,
-    Use { slot: u8, target: Option<Slot> },
+    Use {
+        slot: u8,
+        target: Option<Slot>,
+    },
+    /// Modo de prueba: viaja a uno de los pisos de `WARP_FLOORS` sin sumar puntos.
+    Warp {
+        floor: u8,
+    },
 }
 
 /// Una de las ocho direcciones de movimiento.

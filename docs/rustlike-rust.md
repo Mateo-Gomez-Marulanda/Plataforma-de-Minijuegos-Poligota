@@ -416,6 +416,7 @@ Se repiten en cada zona, con estadísticas y comportamientos más exigentes en c
 | Recoger objeto | `{ "type": "pick" }` | Estar sobre un objeto y tener espacio |
 | Bajar | `{ "type": "descend" }` | Estar sobre una escalera o un hueco de ascensor |
 | Elegir mejora | `{ "type": "choose", "option": 1 }` | Solo en un taller |
+| Viajar (modo de prueba) | `{ "type": "warp", "floor": 100 }` | Solo a los pisos 1, 50, 100, 150, 200, 250 o 255; no suma puntos. En la web se abre con la tecla F8, que no aparece en la ayuda |
 
 Direcciones: `up`, `down`, `left`, `right`, `up_left`, `up_right`, `down_left`, `down_right`.
 

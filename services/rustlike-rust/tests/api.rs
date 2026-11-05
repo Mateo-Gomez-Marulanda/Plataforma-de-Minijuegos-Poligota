@@ -330,6 +330,23 @@ async fn effects_contract() {
 }
 
 #[tokio::test]
+async fn warp_contract() {
+    let a = app();
+    let v = create(&a, 5).await;
+    let path = format!("/games/{}/move", v["id"].as_str().unwrap());
+    let (st, r) = post(&a, &path, r#"{"action":{"type":"warp","floor":100}}"#).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(r["data"]["floor"], 100);
+    assert_eq!(r["data"]["zone"], "treatment_plant");
+    let (st, r) = post(&a, &path, r#"{"action":{"type":"warp","floor":7}}"#).await;
+    assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(r["error"], "INVALID_MOVE");
+    let (st, r) = post(&a, &path, r#"{"action":{"type":"warp","floor":300}}"#).await;
+    assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(r["error"], "INVALID_REQUEST");
+}
+
+#[tokio::test]
 async fn swap_bad_body() {
     let a = app();
     let v = create(&a, 42).await;
