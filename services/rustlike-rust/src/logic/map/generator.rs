@@ -149,7 +149,10 @@ mod tests {
             }
             for dy in -1..=1 {
                 for dx in -1..=1 {
-                    let n = Pos { x: p.x + dx, y: p.y + dy };
+                    let n = Pos {
+                        x: p.x + dx,
+                        y: p.y + dy,
+                    };
                     if map.is_walkable(n) && seen.insert(n) {
                         queue.push_back(n);
                     }
