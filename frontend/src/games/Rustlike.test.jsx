@@ -143,3 +143,13 @@ test('borra la partida al salir', async () => {
   unmount();
   expect(llamadas('DELETE', '/games/abc')).toHaveLength(1);
 });
+
+test('Enter y espacio sobre un botón con foco no mueven al robot', async () => {
+  await abrir();
+  const boton = screen.getByRole('button', { name: 'Nueva partida' });
+  boton.focus();
+  const sinCancelar = fireEvent.keyDown(boton, { key: 'Enter' });
+  fireEvent.keyDown(boton, { key: ' ' });
+  expect(sinCancelar).toBe(true); // no se llamó a preventDefault
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+});

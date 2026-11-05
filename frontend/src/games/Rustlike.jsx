@@ -141,7 +141,9 @@ export default function Rustlike() {
   // Teclado: flechas/WASD, diagonales Q E Z C, espacio o punto para esperar, Enter o > para bajar.
   useEffect(() => {
     const alPulsar = (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || typeof e.key !== 'string') return;
+      // Con foco en un control (botón, enlace, campo) la tecla es suya: Enter/espacio lo activan.
+      if (e.target instanceof Element && (e.target.isContentEditable || e.target.closest('button, a, input, textarea, select'))) return;
       const accion = TECLAS[e.key] ?? TECLAS[e.key.toLowerCase()];
       if (!accion) return;
       e.preventDefault();
