@@ -57,7 +57,7 @@ async fn create_returns_201_with_contract() {
     assert_eq!(d["height"], 30);
     assert_eq!(d["seed"], 42);
     assert_eq!(d["events"], json!([]));
-    assert_eq!(d["entities"], json!([]));
+    assert!(d["entities"].is_array());
     assert_eq!(d["turn"], 0);
     assert_eq!(d["score"], 0);
     let board = v["board"].as_array().unwrap();
@@ -268,5 +268,50 @@ async fn parts_in_contract() {
     );
     for k in ["legs", "arms", "sensors", "core"] {
         assert!(parts[k].is_object(), "falta {k}");
+    }
+}
+
+#[tokio::test]
+async fn entities_only_visible() {
+    let a = app();
+    for seed in 0..30 {
+        let v = create(&a, seed).await;
+        let d = &v["data"];
+        for e in d["entities"].as_array().unwrap() {
+            let (x, y) = (e["x"].as_u64().unwrap(), e["y"].as_u64().unwrap());
+            assert_eq!(d["visible"][y as usize][x as usize], true, "semilla {seed}");
+        }
+    }
+}
+
+#[tokio::test]
+async fn items_and_actions_contract() {
+    let a = app();
+    let v = create(&a, 1).await;
+    assert_eq!(v["data"]["items"], json!([null, null, null]));
+    let path = format!("/games/{}/move", v["id"].as_str().unwrap());
+    let (st, r) = post(
+        &a,
+        &path,
+        r#"{"action":{"type":"use","slot":0,"target":"legs"}}"#,
+    )
+    .await;
+    assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(r["error"], "INVALID_MOVE");
+    assert_eq!(r["message"], "Ese espacio está vacío.");
+}
+
+#[tokio::test]
+async fn bad_use_bodies() {
+    let a = app();
+    let v = create(&a, 1).await;
+    let path = format!("/games/{}/move", v["id"].as_str().unwrap());
+    for body in [
+        r#"{"action":{"type":"use"}}"#,
+        r#"{"action":{"type":"use","slot":0,"target":"tail"}}"#,
+    ] {
+        let (st, r) = post(&a, &path, body).await;
+        assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY, "cuerpo {body:?}");
+        assert_eq!(r["error"], "INVALID_REQUEST");
     }
 }

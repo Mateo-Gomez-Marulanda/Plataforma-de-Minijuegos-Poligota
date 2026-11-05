@@ -1,5 +1,7 @@
 // Lógica pura del juego, sin dependencias de red: partida nueva y aplicación de acciones.
 pub mod action;
+pub mod ai;
+pub mod combat;
 pub mod corrosion;
 pub mod entities;
 pub mod fov;
@@ -12,7 +14,7 @@ pub mod state;
 pub use action::{Action, Dir, Event, InvalidMove};
 pub use state::{GameState, Status};
 
-use corrosion::{corrode, Body, Slot, HIT_SLOTS};
+use corrosion::{corrode, repair, Body, Slot, HIT_SLOTS};
 use map::generator::generate;
 use map::zones::Zone;
 use rand::rngs::StdRng;
@@ -26,6 +28,8 @@ pub fn new_game(seed: u64) -> GameState {
     let mut rng = StdRng::seed_from_u64(seed);
     let level = generate(1, &mut rng);
     let (w, h) = (level.map.width, level.map.height);
+    let mut next_id = 0;
+    let entities = spawn::populate(1, &level, &mut rng, &mut next_id);
     let mut state = GameState {
         seed,
         floor: 1,
@@ -40,6 +44,9 @@ pub fn new_game(seed: u64) -> GameState {
         log: vec!["Despiertas en el piso 1 de la fábrica.".to_string()],
         score: 0,
         body: Body::new(),
+        entities,
+        next_id,
+        items: [None; 3],
         rng,
     };
     refresh_vision(&mut state);
@@ -51,6 +58,7 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
     if state.status != Status::Playing {
         return Err(InvalidMove("La partida ha terminado.".to_string()));
     }
+    let mut events = Vec::new();
     match action {
         Action::Move { dir } => {
             let (dx, dy) = dir.delta();
@@ -61,35 +69,119 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
             if !state.map.is_walkable(dest) {
                 return Err(InvalidMove("Un muro bloquea el paso.".to_string()));
             }
-            let mut events = Vec::new();
-            // La tirada solo ocurre si la jugada es válida y la probabilidad es positiva.
-            let chance = state.body.legs.condition().legs_fail_chance();
-            if chance > 0.0 && state.rng.random_bool(chance) {
-                events.push(Event::PlayerStuck);
-                push_log(
-                    state,
-                    "Tus piernas se traban. Pierdes el turno.".to_string(),
-                );
+            if let Some(idx) = combat::enemy_at(&state.entities, dest) {
+                attack(state, idx, &mut events);
             } else {
-                state.player = dest;
-                events.push(Event::PlayerMoved);
-                if state.map.get(dest) == map::Tile::Puddle {
-                    push_log(state, "Pisas un charco.".to_string());
-                    apply_corrosion(state, Slot::Legs, 3, &mut events);
-                }
+                walk(state, dest, &mut events);
             }
-            state.turn += 1;
-            end_turn(state, &mut events);
-            Ok(events)
         }
-        Action::Wait => {
-            let mut events = Vec::new();
-            state.turn += 1;
-            end_turn(state, &mut events);
-            Ok(events)
-        }
-        Action::Descend => descend(state),
+        Action::Wait => {}
+        Action::Descend => return descend(state),
+        Action::Pick => pick(state, &mut events)?,
+        Action::Use { slot, target } => use_item(state, slot, target, &mut events)?,
     }
+    state.turn += 1;
+    // Los enemigos ven al robot ya en su nueva casilla.
+    refresh_vision(state);
+    ai::enemy_turns(state, &mut events);
+    end_turn(state, &mut events);
+    Ok(events)
+}
+
+/// Desplaza al robot a una casilla libre; las piernas pueden trabarse.
+fn walk(state: &mut GameState, dest: map::Pos, events: &mut Vec<Event>) {
+    // La tirada solo ocurre si la jugada es válida y la probabilidad es positiva.
+    let chance = state.body.legs.condition().legs_fail_chance();
+    if chance > 0.0 && state.rng.random_bool(chance) {
+        events.push(Event::PlayerStuck);
+        push_log(
+            state,
+            "Tus piernas se traban. Pierdes el turno.".to_string(),
+        );
+        return;
+    }
+    state.player = dest;
+    events.push(Event::PlayerMoved);
+    if state.map.get(dest) == map::Tile::Puddle {
+        push_log(state, "Pisas un charco.".to_string());
+        apply_corrosion(state, Slot::Legs, 3, events, "");
+    }
+}
+
+/// Golpea al enemigo en `idx`; si su integridad llega a 0 lo destruye y suma puntos.
+fn attack(state: &mut GameState, idx: usize, events: &mut Vec<Event>) {
+    let dmg = combat::player_damage(&state.body);
+    if dmg == 0 {
+        push_log(state, "Tus brazos bloqueados no hacen daño.".to_string());
+        return;
+    }
+    let entities::EntityKind::Enemy(enemy) = &mut state.entities[idx].kind else {
+        return;
+    };
+    enemy.integrity = enemy.integrity.saturating_sub(dmg);
+    let (dead, name) = (enemy.integrity == 0, contracted(enemy.kind.name()));
+    events.push(Event::EnemyHit);
+    push_log(state, format!("Golpeas {name} (−{dmg})."));
+    if dead {
+        state.entities.remove(idx);
+        let points = score::points_for_floor(state.floor);
+        state.score += points;
+        events.push(Event::EnemyDestroyed);
+        push_log(state, format!("Destruyes {name}. +{points} puntos."));
+    }
+}
+
+/// Contrae "el X" en "al X" para los mensajes de ataque.
+fn contracted(name: &str) -> String {
+    format!("al {}", name.strip_prefix("el ").unwrap_or(name))
+}
+
+/// Recoge el objeto bajo el robot en el primer espacio libre.
+fn pick(state: &mut GameState, events: &mut Vec<Event>) -> Result<(), InvalidMove> {
+    let Some(idx) = combat::item_at(&state.entities, state.player) else {
+        return Err(InvalidMove("No hay ningún objeto aquí.".to_string()));
+    };
+    let Some(free) = state.items.iter().position(Option::is_none) else {
+        return Err(InvalidMove(
+            "No tienes espacio: los 3 espacios están llenos.".to_string(),
+        ));
+    };
+    if let entities::EntityKind::Item(kind) = state.entities.remove(idx).kind {
+        state.items[free] = Some(kind);
+        events.push(Event::ItemPicked);
+        push_log(state, format!("Recoges {}.", kind.name()));
+    }
+    Ok(())
+}
+
+/// Usa el objeto de un espacio; la lata de aceite repara 30 puntos de la pieza elegida.
+fn use_item(
+    state: &mut GameState,
+    slot: u8,
+    target: Option<Slot>,
+    events: &mut Vec<Event>,
+) -> Result<(), InvalidMove> {
+    let Some(cell) = state.items.get(usize::from(slot)).copied() else {
+        return Err(InvalidMove("Ese espacio no existe.".to_string()));
+    };
+    let Some(entities::ItemKind::OilCan) = cell else {
+        return Err(InvalidMove("Ese espacio está vacío.".to_string()));
+    };
+    let Some(part) = target else {
+        return Err(InvalidMove("Indica qué pieza quieres aceitar.".to_string()));
+    };
+    let removed = repair(state.body.part_mut(part), 30);
+    state.items[usize::from(slot)] = None;
+    events.push(Event::ItemUsed);
+    push_log(
+        state,
+        format!(
+            "Aceitas {}. {} −{removed}.",
+            part.name().to_lowercase(),
+            part.name()
+        ),
+    );
+    Ok(())
 }
 
 /// Baja al piso siguiente si el robot está sobre la escalera.
@@ -101,6 +193,7 @@ fn descend(state: &mut GameState) -> Result<Vec<Event>, InvalidMove> {
         InvalidMove("No se puede bajar más: el piso 255 es el último.".to_string())
     })?;
     let level = generate(next, &mut state.rng);
+    let entities = spawn::populate(next, &level, &mut state.rng, &mut state.next_id);
     state.score += score::points_for_floor(state.floor);
     state.floor = next;
     state.zone = Zone::for_floor(next);
@@ -108,6 +201,7 @@ fn descend(state: &mut GameState) -> Result<Vec<Event>, InvalidMove> {
     state.player = level.start;
     state.stairs = level.stairs;
     state.map = level.map;
+    state.entities = entities;
     state.turn += 1;
     push_log(state, format!("Bajas al piso {next}."));
     let mut events = vec![Event::FloorDescended];
@@ -115,22 +209,35 @@ fn descend(state: &mut GameState) -> Result<Vec<Event>, InvalidMove> {
     Ok(events)
 }
 
-/// Aplica corrosión a una pieza, la anota en el registro y emite los eventos.
-fn apply_corrosion(state: &mut GameState, slot: Slot, base: u32, events: &mut Vec<Event>) {
+/// Aplica corrosión a una pieza, la anota en el registro (con `prefix` delante del
+/// primer texto) y emite los eventos.
+pub(crate) fn apply_corrosion(
+    state: &mut GameState,
+    slot: Slot,
+    base: u32,
+    events: &mut Vec<Event>,
+    prefix: &str,
+) {
     let Some(hit) = corrode(&mut state.body, slot, base) else {
+        if !prefix.is_empty() {
+            push_log(state, prefix.trim_end().to_string());
+        }
         return;
     };
     events.push(Event::PartDegraded);
     if hit.transferred {
         let text = format!(
-            "{} ya están {}: el óxido pasa al núcleo. Núcleo +{}.",
+            "{prefix}{} ya están {}: el óxido pasa al núcleo. Núcleo +{}.",
             slot.name(),
             blocked_word(slot),
             hit.amount
         );
         push_log(state, text);
     } else {
-        push_log(state, format!("{} +{}.", hit.slot.name(), hit.amount));
+        push_log(
+            state,
+            format!("{prefix}{} +{}.", hit.slot.name(), hit.amount),
+        );
     }
     if hit.blocked_now && hit.slot != Slot::Core {
         let text = format!(
@@ -275,6 +382,8 @@ mod tests {
             assert_eq!(ra, rb);
         }
         assert_eq!((a.floor, a.turn, a.player), (b.floor, b.turn, b.player));
+        assert_eq!(a.entities, b.entities);
+        assert!(!a.entities.is_empty());
         assert_eq!(
             (&a.map, &a.seen, &a.visible, a.score, &a.log),
             (&b.map, &b.seen, &b.visible, b.score, &b.log)
@@ -510,6 +619,9 @@ mod tests {
     fn optimal_legs_never_roll() {
         let mut a = new_game(22);
         let mut b = new_game(22);
+        // Sin enemigos, así que ninguna tirada ajena toca el generador.
+        a.entities.clear();
+        b.entities.clear();
         let d = walkable_dir(&a);
         apply_action(&mut a, Action::Move { dir: d }).unwrap();
         a.player = a.stairs.unwrap();
@@ -596,12 +708,12 @@ mod tests {
         let mut s = new_game(27);
         let mut ev = vec![];
         s.body.part_mut(Slot::Sensors).corrosion = 98;
-        apply_corrosion(&mut s, Slot::Sensors, 5, &mut ev);
+        apply_corrosion(&mut s, Slot::Sensors, 5, &mut ev, "");
         assert!(s.log.contains(&"Sensores +2.".to_string()));
         assert!(s
             .log
             .contains(&"Sensores bloqueados por el óxido.".to_string()));
-        apply_corrosion(&mut s, Slot::Sensors, 5, &mut ev);
+        apply_corrosion(&mut s, Slot::Sensors, 5, &mut ev, "");
         assert_eq!(s.body.core.corrosion, 5);
         assert_eq!(
             s.log.last().unwrap(),
@@ -618,15 +730,290 @@ mod tests {
         let mut s = new_game(28);
         let mut ev = vec![];
         s.body.part_mut(Slot::Legs).corrosion = 99;
-        apply_corrosion(&mut s, Slot::Legs, 1, &mut ev);
+        apply_corrosion(&mut s, Slot::Legs, 1, &mut ev, "");
         assert_eq!(s.log.last().unwrap(), "Piernas bloqueadas por el óxido.");
-        apply_corrosion(&mut s, Slot::Legs, 4, &mut ev);
+        apply_corrosion(&mut s, Slot::Legs, 4, &mut ev, "");
         assert_eq!(
             s.log.last().unwrap(),
             "Piernas ya están bloqueadas: el óxido pasa al núcleo. Núcleo +4."
         );
         s.body.part_mut(Slot::Arms).corrosion = 99;
-        apply_corrosion(&mut s, Slot::Arms, 1, &mut ev);
+        apply_corrosion(&mut s, Slot::Arms, 1, &mut ev, "");
         assert_eq!(s.log.last().unwrap(), "Brazos bloqueados por el óxido.");
+    }
+
+    // --- Combate, IA y objetos ---
+
+    /// Partida con un salón abierto de 20x10 sin entidades y el robot en (10, 10).
+    fn arena(seed: u64) -> GameState {
+        let mut s = new_game(seed);
+        for y in 0..s.map.height as i32 {
+            for x in 0..s.map.width as i32 {
+                s.map.set(Pos { x, y }, Tile::Wall);
+            }
+        }
+        for y in 5..15 {
+            for x in 5..25 {
+                s.map.set(Pos { x, y }, Tile::Floor);
+            }
+        }
+        s.player = Pos { x: 10, y: 10 };
+        s.stairs = None;
+        s.entities.clear();
+        refresh_vision(&mut s);
+        s
+    }
+
+    fn add_enemy(s: &mut GameState, kind: entities::EnemyKind, x: i32, y: i32) -> u32 {
+        let id = s.next_id;
+        s.next_id += 1;
+        let kind = entities::EntityKind::Enemy(entities::Enemy::new(kind, s.floor));
+        s.entities.push(entities::Entity {
+            id,
+            pos: Pos { x, y },
+            kind,
+        });
+        id
+    }
+
+    fn add_item(s: &mut GameState, x: i32, y: i32) {
+        let id = s.next_id;
+        s.next_id += 1;
+        s.entities.push(entities::Entity {
+            id,
+            pos: Pos { x, y },
+            kind: entities::EntityKind::Item(entities::ItemKind::OilCan),
+        });
+    }
+
+    fn enemy_pos(s: &GameState, id: u32) -> Pos {
+        s.entities.iter().find(|e| e.id == id).unwrap().pos
+    }
+
+    fn cheb(a: Pos, b: Pos) -> i32 {
+        (a.x - b.x).abs().max((a.y - b.y).abs())
+    }
+
+    #[test]
+    fn bump_attacks_and_destroys() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(1);
+        add_enemy(&mut s, RustMite, 11, 10);
+        let r = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(r.contains(&Event::EnemyHit));
+        assert_eq!(s.player, Pos { x: 10, y: 10 });
+        assert_eq!(
+            s.log
+                .iter()
+                .filter(|l| l.as_str() == "Golpeas al ácaro de óxido (−10).")
+                .count(),
+            1
+        );
+        s.body = Body::new();
+        let r = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(r.contains(&Event::EnemyHit) && r.contains(&Event::EnemyDestroyed));
+        assert_eq!(s.score, 20);
+        assert!(s.entities.is_empty());
+        assert!(s
+            .log
+            .contains(&"Destruyes al ácaro de óxido. +20 puntos.".to_string()));
+    }
+
+    #[test]
+    fn blocked_arms_do_no_damage() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(1);
+        s.body.arms.corrosion = 100;
+        add_enemy(&mut s, RustMite, 11, 10);
+        let r = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(!r.contains(&Event::EnemyHit));
+        assert!(s
+            .log
+            .contains(&"Tus brazos bloqueados no hacen daño.".to_string()));
+        assert_eq!(s.turn, 1);
+        assert!(matches!(&s.entities[0].kind, entities::EntityKind::Enemy(e) if e.integrity == 15));
+    }
+
+    #[test]
+    fn attack_ignores_legs_and_visibility() {
+        use entities::EnemyKind::Drone;
+        for seed in 0..20 {
+            let mut s = arena(seed);
+            s.body.legs.corrosion = 100;
+            s.body.sensors.corrosion = 100;
+            add_enemy(&mut s, Drone, 11, 10);
+            let r = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+            assert!(r.contains(&Event::EnemyHit), "semilla {seed}");
+            assert!(!r.contains(&Event::PlayerStuck));
+        }
+    }
+
+    #[test]
+    fn enemy_adjacent_hits_random_part() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(2);
+        add_enemy(&mut s, RustMite, 11, 10);
+        let r = apply_action(&mut s, Action::Wait).unwrap();
+        assert!(r.contains(&Event::PlayerHit));
+        assert!(HIT_SLOTS.iter().any(|sl| s.body.part(*sl).corrosion == 6));
+        let last = s.log.last().unwrap();
+        assert!(last.starts_with("El ácaro de óxido te muerde. "), "{last}");
+    }
+
+    #[test]
+    fn blocked_part_hit_goes_to_core() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(2);
+        for sl in HIT_SLOTS {
+            s.body.part_mut(sl).corrosion = 100;
+        }
+        add_enemy(&mut s, RustMite, 11, 10);
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert_eq!(s.body.core.corrosion, 6);
+    }
+
+    #[test]
+    fn death_mid_turn_stops_play() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(2);
+        for sl in HIT_SLOTS {
+            s.body.part_mut(sl).corrosion = 100;
+        }
+        s.body.core.corrosion = 94;
+        add_enemy(&mut s, RustMite, 11, 10);
+        add_enemy(&mut s, RustMite, 9, 10);
+        let r = apply_action(&mut s, Action::Wait).unwrap();
+        assert_eq!(s.body.core.corrosion, 100);
+        assert_eq!(s.status, Status::Lost);
+        assert!(r.contains(&Event::GameOver));
+        assert_eq!(r.iter().filter(|e| **e == Event::PlayerHit).count(), 1);
+    }
+
+    #[test]
+    fn mite_chases_within_8() {
+        use entities::EnemyKind::RustMite;
+        let mut s = arena(3);
+        let id = add_enemy(&mut s, RustMite, 15, 10);
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert_eq!(cheb(enemy_pos(&s, id), s.player), 4);
+        let far = add_enemy(&mut s, RustMite, 24, 14);
+        assert!(cheb(enemy_pos(&s, far), s.player) > 8);
+        let before = enemy_pos(&s, far);
+        // A más de 8 vaga: nunca se acerca en línea recta de golpe.
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert!(cheb(enemy_pos(&s, far), before) <= 1);
+    }
+
+    #[test]
+    fn drone_wanders_until_seen_then_chases() {
+        use entities::EnemyKind::Drone;
+        let mut s = arena(4);
+        s.body.sensors.corrosion = 100;
+        let id = add_enemy(&mut s, Drone, 13, 10);
+        apply_action(&mut s, Action::Wait).unwrap();
+        let awake = |s: &GameState| {
+            s.entities.iter().any(|e| {
+                e.id == id && matches!(&e.kind, entities::EntityKind::Enemy(en) if en.awake)
+            })
+        };
+        assert!(!awake(&s));
+        s.body.sensors.corrosion = 0;
+        s.entities.iter_mut().find(|e| e.id == id).unwrap().pos = Pos { x: 15, y: 10 };
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert!(awake(&s));
+        assert_eq!(cheb(enemy_pos(&s, id), s.player), 4);
+        // Despierto para siempre: persigue aunque deje de verse.
+        s.body.sensors.corrosion = 100;
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert_eq!(cheb(enemy_pos(&s, id), s.player), 3);
+    }
+
+    #[test]
+    fn enemies_never_stack_or_enter_player() {
+        use entities::EnemyKind::{Drone, RustMite};
+        let mut s = arena(5);
+        for (i, k) in [RustMite, Drone, RustMite, Drone, RustMite, Drone]
+            .into_iter()
+            .enumerate()
+        {
+            add_enemy(&mut s, k, 14 + i as i32, 6 + 2 * (i as i32 % 3));
+        }
+        for _ in 0..200 {
+            s.body = Body::new();
+            apply_action(&mut s, Action::Wait).unwrap();
+            let mut seen = std::collections::HashSet::new();
+            for e in &s.entities {
+                assert!(seen.insert(e.pos), "dos entidades en {:?}", e.pos);
+                assert_ne!(e.pos, s.player);
+            }
+        }
+    }
+
+    #[test]
+    fn pick_and_full_slots() {
+        let mut s = arena(6);
+        assert_eq!(
+            apply_action(&mut s, Action::Pick),
+            Err(InvalidMove("No hay ningún objeto aquí.".to_string()))
+        );
+        add_item(&mut s, 11, 10);
+        apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(s.allowed_actions().contains(&"pick"));
+        s.items = [Some(entities::ItemKind::OilCan); 3];
+        assert!(!s.allowed_actions().contains(&"pick"));
+        let turn = s.turn;
+        assert_eq!(
+            apply_action(&mut s, Action::Pick),
+            Err(InvalidMove(
+                "No tienes espacio: los 3 espacios están llenos.".to_string()
+            ))
+        );
+        assert_eq!(s.turn, turn);
+        assert_eq!(s.entities.len(), 1);
+        s.items[1] = None;
+        let r = apply_action(&mut s, Action::Pick).unwrap();
+        assert!(r.contains(&Event::ItemPicked));
+        assert_eq!(s.items[1], Some(entities::ItemKind::OilCan));
+        assert!(s.entities.is_empty());
+        assert!(s.log.contains(&"Recoges una lata de aceite.".to_string()));
+    }
+
+    #[test]
+    fn use_oil_can_rules() {
+        let mut s = arena(7);
+        let use_ = |slot, target| Action::Use { slot, target };
+        let err = |m: &str| Err(InvalidMove(m.to_string()));
+        assert_eq!(
+            apply_action(&mut s, use_(3, None)),
+            err("Ese espacio no existe.")
+        );
+        assert_eq!(
+            apply_action(&mut s, use_(0, None)),
+            err("Ese espacio está vacío.")
+        );
+        s.items[0] = Some(entities::ItemKind::OilCan);
+        assert_eq!(
+            apply_action(&mut s, use_(0, None)),
+            err("Indica qué pieza quieres aceitar.")
+        );
+        assert_eq!(s.turn, 0);
+        s.body.legs.corrosion = 50;
+        let r = apply_action(&mut s, use_(0, Some(Slot::Legs))).unwrap();
+        assert!(r.contains(&Event::ItemUsed));
+        assert_eq!(s.body.legs.corrosion, 20);
+        assert_eq!(s.items[0], None);
+        assert!(s.log.contains(&"Aceitas piernas. Piernas −30.".to_string()));
+        assert_eq!(s.turn, 1);
+    }
+
+    #[test]
+    fn descend_populates_new_floor() {
+        let mut s = on_stairs(8);
+        apply_action(&mut s, Action::Descend).unwrap();
+        assert!(s
+            .entities
+            .iter()
+            .any(|e| matches!(e.kind, entities::EntityKind::Enemy(_))));
+        assert!(s.entities.iter().all(|e| e.pos != s.player));
     }
 }

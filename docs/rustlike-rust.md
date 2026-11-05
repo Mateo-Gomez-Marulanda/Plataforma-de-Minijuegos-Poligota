@@ -88,7 +88,7 @@ El robot tiene cuatro piezas, cada una con corrosión de **0 a 100**:
 | 75–99 | Crítico | 50 % | 25 % | 2 |
 | 100 | Bloqueada | 75 % | 0 % | 1 |
 
-Si las piernas se traban, el jugador **pierde el turno** y los enemigos actúan igualmente.
+Si las piernas se traban, el jugador **pierde el turno** y los enemigos actúan igualmente. Las piernas solo se traban al **desplazarse** a una casilla libre: atacar es trabajo de los brazos y no tira el dado de piernas.
 
 ### 3.3 Fuentes de corrosión
 
@@ -169,7 +169,7 @@ El robot tiene **3 espacios** de consumibles. No hay otro inventario.
 El mundo solo avanza cuando el jugador actúa. **Una petición REST equivale a un turno completo:**
 
 1. **Jugador**: realiza su acción (si las piernas se traban, pierde el turno).
-2. **Enemigos**: cada uno se acerca, ataca o espera.
+2. **Enemigos**: cada uno, por id ascendente, ataca si está adyacente, se acerca si detecta al jugador o vaga al azar. Si el jugador cae a media fase, los demás ya no actúan.
 3. **Entorno**: goteras, cintas, imanes, calor, inundación, corrosión pasiva y propagación.
 4. **Comprobación**: si el núcleo llega a 100, la partida termina.
 5. **Respuesta**: el servidor devuelve el estado y los eventos del turno.
@@ -226,7 +226,9 @@ Destruir a un enemigo y completar un piso valen lo mismo: **20 puntos**, más **
 | Robot oxidado | 60 | 10 | Lenta | Al destruirse suelta una de sus piezas |
 | Gotera | Indestructible | — | Inmóvil | Crea charcos a su alrededor con el tiempo |
 
-La integridad y el golpe escalan con el número de piso. Cada zona añade enemigos propios (pendiente de definir, sección 17).
+La integridad y el golpe escalan con el número de piso (sección 17).
+
+**Detección:** el ácaro persigue al jugador si está a distancia de Chebyshev 8 o menos. El dron vaga al azar hasta que su casilla entra en el campo de visión del jugador; desde ese momento queda despierto para siempre y persigue. Los enemigos nunca comparten casilla ni entran en la del jugador. Cada zona añade enemigos propios (pendiente de definir, sección 17).
 
 ### 7.2 Enemigos élite
 
@@ -448,8 +450,9 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
 - `board`: tipo de cada casilla. Las nunca vistas son `"unknown"`.
 - `message`: `null` en las respuestas correctas.
 - `data.visible`: casillas dentro del campo de visión actual.
-- `data.entities`: solo lo visible o detectado por sensores térmicos (vacío en la fase 1).
-- `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera).
+- `data.entities`: solo lo que está en casillas visibles. Enemigos: `{id, kind, x, y, elite, integrity, maxIntegrity}`; objetos: `{id, kind, x, y}`.
+- `data.items`: los 3 espacios de objetos, con el id del objeto o `null`.
+- `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera, `"pick"` sobre un objeto con espacio libre, `"use"` si se lleva algún objeto).
 - `data.events`: lo ocurrido en el turno, usado únicamente para animaciones.
 - `data.log`: últimas 20 entradas del registro de mensajes.
 - `data.score`: puntaje acumulado (sección 6.6).
@@ -572,7 +575,7 @@ services/rustlike-rust/
 
 - Tono y estilo visual definitivos.
 - Balance de todos los valores numéricos.
-- Escalado de enemigos por piso.
+- ~~Escalado de enemigos por piso~~ (decidido): `valor = base + base × ((piso − 1) / 10) / 10` con enteros, es decir, +10 % cada 10 pisos completos; se aplica a la integridad y al golpe.
 - Enemigos propios de cada zona.
 - Jefes de zona de los pisos 50, 100, 200 y 250.
 - Fabricantes de piezas y sus bonos de conjunto.

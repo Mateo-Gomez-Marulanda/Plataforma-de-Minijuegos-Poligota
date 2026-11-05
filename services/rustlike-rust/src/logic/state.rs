@@ -1,5 +1,7 @@
 // Estado completo de una partida: piso, mapa, visión, puntaje y registro.
+use super::combat::item_at;
 use super::corrosion::Body;
+use super::entities::{Entity, ItemKind};
 use super::map::zones::Zone;
 use super::map::{Map, Pos, Tile};
 use rand::rngs::StdRng;
@@ -38,6 +40,9 @@ pub struct GameState {
     pub log: Vec<String>,
     pub score: u32,
     pub body: Body,
+    pub entities: Vec<Entity>,
+    pub next_id: u32,
+    pub items: [Option<ItemKind>; 3],
     pub rng: StdRng,
 }
 
@@ -56,6 +61,13 @@ impl GameState {
         let mut actions = vec!["move", "wait"];
         if self.map.get(self.player) == Tile::Stairs {
             actions.push("descend");
+        }
+        if item_at(&self.entities, self.player).is_some() && self.items.iter().any(Option::is_none)
+        {
+            actions.push("pick");
+        }
+        if self.items.iter().any(Option::is_some) {
+            actions.push("use");
         }
         actions
     }

@@ -1,4 +1,5 @@
 // Acciones del jugador, direcciones, eventos del turno y el error de jugada inválida.
+use super::corrosion::Slot;
 use serde::Deserialize;
 
 /// Acción que el jugador puede pedir en su turno.
@@ -8,6 +9,8 @@ pub enum Action {
     Move { dir: Dir },
     Wait,
     Descend,
+    Pick,
+    Use { slot: u8, target: Option<Slot> },
 }
 
 /// Una de las ocho direcciones de movimiento.
@@ -48,6 +51,11 @@ pub enum Event {
     PlayerStuck,
     PartDegraded,
     PartBlocked,
+    EnemyHit,
+    EnemyDestroyed,
+    PlayerHit,
+    ItemPicked,
+    ItemUsed,
     GameOver,
 }
 
@@ -60,6 +68,11 @@ impl Event {
             Event::PlayerStuck => "player_stuck",
             Event::PartDegraded => "part_degraded",
             Event::PartBlocked => "part_blocked",
+            Event::EnemyHit => "enemy_hit",
+            Event::EnemyDestroyed => "enemy_destroyed",
+            Event::PlayerHit => "player_hit",
+            Event::ItemPicked => "item_picked",
+            Event::ItemUsed => "item_used",
             Event::GameOver => "game_over",
         }
     }
