@@ -4,7 +4,7 @@ import Rustlike from '../games/Rustlike.jsx';
 
 export default function JuegoRustlike() {
   return (
-    <Pagina titulo="Rust Like" volverAJuegos musica="rustlike">
+    <Pagina titulo="Rust Like" volverAJuegos musica="rustlike" amplia>
       <Rustlike />
     </Pagina>
   );

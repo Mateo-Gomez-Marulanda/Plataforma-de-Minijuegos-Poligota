@@ -124,11 +124,52 @@ test('ignora teclas mientras espera la respuesta', async () => {
 
 test('un 422 muestra el mensaje y conserva el tablero', async () => {
   await abrir();
-  fetchFalso.mockImplementationOnce(() => json({ error: 'INVALID_MOVE', message: 'Un muro bloquea el paso.' }, 422));
+  fetchFalso.mockImplementationOnce(() => json({ error: 'INVALID_MOVE', message: 'La gotera es indestructible.' }, 422));
   fireEvent.keyDown(window, { key: 'ArrowLeft' });
-  expect((await screen.findByRole('alert')).textContent).toBe('Un muro bloquea el paso.');
+  expect((await screen.findByRole('alert')).textContent).toBe('La gotera es indestructible.');
   expect(screen.getByRole('img', { name: 'Piso 1' })).toBeTruthy();
   expect(screen.getByLabelText('Puntaje').textContent).toBe('45');
+});
+
+test('chocar con un muro no muestra ningún mensaje y borra el anterior', async () => {
+  await abrir();
+  fetchFalso.mockImplementationOnce(() => json({ error: 'INVALID_MOVE', message: 'La gotera es indestructible.' }, 422));
+  fireEvent.keyDown(window, { key: 'ArrowLeft' });
+  await screen.findByRole('alert');
+  fetchFalso.mockImplementationOnce(() => json({ error: 'INVALID_MOVE', message: 'Un muro bloquea el paso.' }, 422));
+  fireEvent.keyDown(window, { key: 'ArrowLeft' });
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(screen.queryByText('Un muro bloquea el paso.')).toBeNull();
+  expect(screen.getByRole('img', { name: 'Piso 1' })).toBeTruthy();
+});
+
+test('F8 abre el modo de prueba oculto y viaja al piso elegido', async () => {
+  await abrir();
+  expect(screen.queryByRole('dialog', { name: 'Modo de prueba' })).toBeNull();
+  expect(screen.getByText(/Mover:/).textContent).not.toMatch(/F8|prueba/i);
+  fireEvent.keyDown(window, { key: 'F8' });
+  const dialogo = screen.getByRole('dialog', { name: 'Modo de prueba' });
+  const pisos = within(dialogo).getAllByRole('button').map((b) => b.textContent).filter((t) => t !== 'Cancelar');
+  expect(pisos).toEqual(['1', '50', '100', '150', '200', '250', '255']);
+  // Con el modo de prueba abierto las teclas de movimiento no juegan.
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+  fetchFalso.mockImplementationOnce(() => json(estado({ floor: 100, zone: 'treatment_plant', turn: 4 })));
+  fireEvent.click(within(dialogo).getByRole('button', { name: '100' }));
+  await screen.findByRole('img', { name: 'Piso 100' });
+  expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'warp', floor: 100 });
+  expect(screen.queryByRole('dialog', { name: 'Modo de prueba' })).toBeNull();
+});
+
+test('Esc o Cancelar cierran el modo de prueba sin enviar nada', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: 'F8' });
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(screen.queryByRole('dialog', { name: 'Modo de prueba' })).toBeNull();
+  fireEvent.keyDown(window, { key: 'F8' });
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(screen.queryByRole('dialog', { name: 'Modo de prueba' })).toBeNull();
+  expect(llamadas('POST', '/move')).toHaveLength(0);
 });
 
 test('las casillas unknown no se dibujan', async () => {

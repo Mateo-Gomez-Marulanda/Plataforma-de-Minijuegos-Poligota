@@ -89,6 +89,9 @@ a:focus-visible {
   margin: 0 auto;
 }
 
+/* Pantalla más ancha para Rust Like: el mapa crece un 20 % y el panel lateral sigue a su derecha. */
+.pantalla--amplia { max-width: 86rem; }
+
 .pantalla--inicio {
   display: flex;
   flex-direction: column;
@@ -1100,7 +1103,6 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  max-width: 76rem;
 }
 
 /* Mapa a la izquierda y panel del robot a la derecha; en pantallas estrechas el panel baja. */

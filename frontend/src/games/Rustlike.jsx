@@ -351,11 +351,33 @@ function Selector({ slot, parts, alElegir, alCancelar }) {
   );
 }
 
+// Pisos a los que viaja el modo de prueba oculto (F8); el servidor solo acepta estos.
+const PISOS_PRUEBA = [1, 50, 100, 150, 200, 250, 255];
+
+// Rechazos que no se muestran: chocar con un muro no necesita aviso.
+const SIN_AVISO = new Set(['Un muro bloquea el paso.']);
+
+// Modo de prueba oculto: elige a qué piso viajar para probar las zonas profundas.
+function ModoPrueba({ alElegir, alCancelar }) {
+  return (
+    <div className="rustlike__capa rustlike__prueba" role="dialog" aria-label="Modo de prueba">
+      <p>Modo de prueba: ¿a qué piso?</p>
+      <div className="rustlike__botones">
+        {PISOS_PRUEBA.map((piso) => (
+          <button key={piso} className="boton" onClick={(e) => { alElegir(piso); e.currentTarget.blur(); }}>{piso}</button>
+        ))}
+        <button className="boton" onClick={(e) => { alCancelar(); e.currentTarget.blur(); }}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Rustlike() {
   const [juego, setJuego] = useState(null);
   const [error, setError] = useState(null);
   const [enCurso, setEnCurso] = useState(false); // hay una petición en curso (desactiva los botones)
   const [slot, setSlot] = useState(null); // espacio de objeto con el selector abierto
+  const [prueba, setPrueba] = useState(false); // modo de prueba (F8) abierto
   const idActual = useRef(null); // id de la partida en curso
   const sesiones = useRef(0); // numera las creaciones para descartar respuestas tardías
   const peticiones = useRef(0); // numera las jugadas para descartar respuestas viejas
@@ -369,6 +391,7 @@ export default function Rustlike() {
     setEnCurso(false);
     setError(null);
     setSlot(null);
+    setPrueba(false);
     setJuego(null);
     if (idActual.current) borrarPartida(idActual.current);
     idActual.current = null;
@@ -392,7 +415,8 @@ export default function Rustlike() {
     };
   }, [iniciar]);
 
-  // Envía una acción y muestra el estado que devuelve; un error (p. ej. un muro) se muestra sin perder el tablero.
+  // Envía una acción y muestra el estado que devuelve; un error se muestra sin perder el tablero,
+  // salvo los de SIN_AVISO (chocar con un muro), que solo borran el aviso anterior.
   const enviar = useCallback(async (accion) => {
     const id = idActual.current;
     if (!id || ocupado.current) return;
@@ -406,9 +430,11 @@ export default function Rustlike() {
       setError(null);
     } catch (e) {
       if (numero === peticiones.current) {
-        setError(e instanceof ErrorApi && e.codigo === 'NOT_FOUND'
-          ? 'La partida ya no existe en el servidor. Empieza una nueva.'
-          : e.message);
+        if (e instanceof ErrorApi && e.codigo === 'NOT_FOUND') {
+          setError('La partida ya no existe en el servidor. Empieza una nueva.');
+        } else {
+          setError(SIN_AVISO.has(e.message) ? null : e.message);
+        }
       }
     } finally {
       if (numero === peticiones.current) { ocupado.current = false; setEnCurso(false); }
@@ -438,6 +464,16 @@ export default function Rustlike() {
       if (destino && destino.closest('button, a') && (e.key === 'Enter' || e.key === ' ')) return;
       // Con la partida perdida las teclas no hacen nada.
       if (juego?.status === 'lost') return;
+      // Modo de prueba oculto: F8 lo abre o lo cierra; abierto, solo Esc hace algo.
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (slot === null) setPrueba((abierto) => !abierto);
+        return;
+      }
+      if (prueba) {
+        if (e.key === 'Escape') { e.preventDefault(); setPrueba(false); }
+        return;
+      }
       // Con el selector abierto solo Esc hace algo.
       if (slot !== null) {
         if (e.key === 'Escape') { e.preventDefault(); setSlot(null); }
@@ -465,7 +501,13 @@ export default function Rustlike() {
     };
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
-  }, [enviar, juego, slot, elegirObjeto]);
+  }, [enviar, juego, slot, prueba, elegirObjeto]);
+
+  // Viaja al piso elegido en el modo de prueba y lo cierra.
+  const viajar = useCallback((piso) => {
+    setPrueba(false);
+    enviar({ type: 'warp', floor: piso });
+  }, [enviar]);
 
   if (error && !juego) {
     return (
@@ -503,6 +545,7 @@ export default function Rustlike() {
           </div>
         )}
         {slot !== null && juego.status !== 'lost' && <Selector slot={slot} parts={data.parts} alElegir={usar} alCancelar={() => setSlot(null)} />}
+        {prueba && juego.status !== 'lost' && <ModoPrueba alElegir={viajar} alCancelar={() => setPrueba(false)} />}
       </Board>
       <Hud data={data} inactivo={inactivo} alUsar={elegirObjeto} alRecoger={() => enviar({ type: 'pick' })} alCambiar={() => enviar({ type: 'swap' })} />
       </div>

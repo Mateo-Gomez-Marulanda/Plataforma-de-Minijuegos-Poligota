@@ -89,6 +89,14 @@ test.each(['sudoku', 'buscaminas', 'snake', 'tetris', 'asteroids', 'blackjack', 
   expect(screen.getByRole('link', { name: 'Volver a minijuegos' }).getAttribute('href')).toBe('/juegos');
 });
 
+test('solo Rust Like usa la pantalla amplia, para que el mapa sea más grande', () => {
+  en('/juegos/rustlike');
+  expect(screen.getByRole('main').className).toContain('pantalla--amplia');
+  cleanup();
+  en('/juegos/tetris');
+  expect(screen.getByRole('main').className).not.toContain('pantalla--amplia');
+});
+
 test('Minijuegos y Créditos no muestran el botón «Volver a minijuegos»', () => {
   en('/juegos');
   expect(screen.queryByRole('link', { name: 'Volver a minijuegos' })).toBeNull();

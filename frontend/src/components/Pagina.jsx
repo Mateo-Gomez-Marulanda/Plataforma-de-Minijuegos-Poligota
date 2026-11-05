@@ -1,14 +1,14 @@
 // Marco de las pantallas interiores: enlace para volver al inicio, título y contenido.
 // Las pantallas de juego piden además el botón «Volver a minijuegos» con `volverAJuegos` y su música con `musica`
-// (el id del juego; la pista se define en musica/pistas.js).
+// (el id del juego; la pista se define en musica/pistas.js). Con `amplia` la pantalla usa un ancho mayor.
 import { Link } from 'react-router-dom';
 import Fichas from './Fichas.jsx';
 import { usePista } from '../musica/MusicaContext.jsx';
 
-export default function Pagina({ titulo, volverAJuegos = false, musica, children }) {
+export default function Pagina({ titulo, volverAJuegos = false, musica, amplia = false, children }) {
   usePista(musica);
   return (
-    <main className="pantalla pantalla--interior">
+    <main className={`pantalla pantalla--interior${amplia ? ' pantalla--amplia' : ''}`}>
       <div className="cabecera-interior">
         <Link to="/" className="volver">
           <Fichas />
