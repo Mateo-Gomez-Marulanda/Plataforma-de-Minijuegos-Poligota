@@ -1131,7 +1131,57 @@ a:focus-visible {
 /* Casilla vista pero fuera del campo de visión actual */
 .casilla--niebla { opacity: 0.45; }
 
-.robot rect { fill: var(--oxido); }
+.casilla--puddle { fill: #2f6f9f; animation: charco 2.4s ease-in-out infinite alternate; }
+@keyframes charco { from { opacity: 0.65; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .casilla--puddle { animation: none; } }
+
+.robot {
+  --pieza-optimal: #9aa3ad;
+  --pieza-light: #c89a6a;
+  --pieza-severe: #c8642a;
+  --pieza-critical: #8a4a24;
+  --pieza-blocked: #5a3a24;
+}
+.robot__cuerpo { fill: #4a4f55; }
+.robot__pieza[data-condition='optimal'] { fill: var(--pieza-optimal); }
+.robot__pieza[data-condition='light'] { fill: var(--pieza-light); }
+.robot__pieza[data-condition='severe'] { fill: var(--pieza-severe); }
+.robot__pieza[data-condition='critical'] { fill: var(--pieza-critical); }
+.robot__pieza[data-condition='blocked'] { fill: var(--pieza-blocked); }
 .robot__ojo { fill: var(--tinta); }
+
+.enemigo--mite circle { fill: #b5532a; }
+.enemigo--mite path { stroke: #b5532a; stroke-width: 1; fill: none; }
+.enemigo--drone polygon { fill: #7aa6c2; stroke: #2a2623; stroke-width: 0.6; }
+.objeto--lata rect { fill: #d9b13b; }
+.objeto--lata .objeto__tapa { fill: #8a6d1c; }
+.enemigo__barra-fondo { fill: #2a2623; }
+.enemigo__barra-valor { fill: #6bbf59; }
+
+.rustlike__tablero { position: relative; }
+.rustlike__capa {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  background: rgba(20, 17, 15, 0.82);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+.rustlike__capa h2 { margin: 0; }
+
+.rustlike__piezas, .rustlike__objetos { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
+.pieza { display: grid; grid-template-columns: 6rem 8rem auto; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+.pieza__barra { display: block; height: 0.5rem; background: #2a2623; border-radius: 0.25rem; overflow: hidden; }
+.pieza__barra span { display: block; height: 100%; background: var(--pieza-optimal, #9aa3ad); }
+.pieza[data-condition='light'] .pieza__barra span { background: #c89a6a; }
+.pieza[data-condition='severe'] .pieza__barra span { background: #c8642a; }
+.pieza[data-condition='critical'] .pieza__barra span { background: #8a4a24; }
+.pieza[data-condition='blocked'] .pieza__barra span { background: #5a3a24; }
+.objeto-hud { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+.objeto-hud__vacio { color: var(--papel-tenue); }
 
 .rustlike__ayuda { color: var(--papel-tenue); font-size: 0.85rem; }

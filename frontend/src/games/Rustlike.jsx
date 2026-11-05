@@ -29,6 +29,15 @@ const ZONAS = {
   core: 'El núcleo',
 };
 
+// Nombre en español de cada pieza, en el orden del HUD.
+const PIEZAS = [['legs', 'Piernas'], ['arms', 'Brazos'], ['sensors', 'Sensores'], ['core', 'Núcleo']];
+
+// Etiqueta en español del estado de una pieza.
+const ESTADOS = { optimal: 'Óptimo', light: 'Leve', severe: 'Grave', critical: 'Crítico', blocked: 'Bloqueada' };
+
+// Nombre en español de cada objeto.
+const OBJETOS = { oil_can: 'Lata de aceite' };
+
 // Una casilla conocida; la clase depende del tipo y `niebla` indica que se vio pero ya no es visible.
 const Tile = memo(function Tile({ x, y, tipo, niebla }) {
   return (
@@ -42,23 +51,82 @@ const Tile = memo(function Tile({ x, y, tipo, niebla }) {
   );
 });
 
-// El robot del jugador, dibujado en su casilla.
-function Robot({ x, y }) {
-  const cx = x * LADO + LADO / 2;
-  const cy = y * LADO + LADO / 2;
+// El robot del jugador: una forma por pieza, con el estado de cada una en `data-condition` (el color sale de la hoja de estilos).
+function Robot({ x, y, parts }) {
+  const px = x * LADO;
+  const py = y * LADO;
+  const estado = (p) => parts?.[p]?.condition ?? 'optimal';
   return (
     <g className="robot" aria-hidden="true">
-      <rect x={x * LADO + 3} y={y * LADO + 4} width={LADO - 6} height={LADO - 7} rx="2" />
-      <circle className="robot__ojo" cx={cx - 2.5} cy={cy - 1} r="1.4" />
-      <circle className="robot__ojo" cx={cx + 2.5} cy={cy - 1} r="1.4" />
+      <rect className="robot__pieza" data-part="legs" data-condition={estado('legs')} x={px + 4} y={py + 11} width={LADO - 8} height="4" rx="1" />
+      <rect className="robot__cuerpo" x={px + 4} y={py + 5} width={LADO - 8} height="6" rx="1" />
+      <rect className="robot__pieza" data-part="core" data-condition={estado('core')} x={px + 6.5} y={py + 6.5} width={LADO - 13} height="3" rx="1" />
+      <rect className="robot__pieza" data-part="arms" data-condition={estado('arms')} x={px + 1.5} y={py + 5} width="2.5" height="6" rx="1" />
+      <rect className="robot__pieza" data-part="arms" data-condition={estado('arms')} x={px + LADO - 4} y={py + 5} width="2.5" height="6" rx="1" />
+      <rect className="robot__pieza" data-part="sensors" data-condition={estado('sensors')} x={px + 5} y={py + 1.5} width={LADO - 10} height="3.5" rx="1" />
+      <circle className="robot__ojo" cx={px + 6.5} cy={py + 3.25} r="0.9" />
+      <circle className="robot__ojo" cx={px + LADO - 6.5} cy={py + 3.25} r="0.9" />
     </g>
   );
 }
 
+// Barra fina de integridad sobre un enemigo dañado.
+function BarraIntegridad({ x, y, e }) {
+  if (e.integrity >= e.maxIntegrity) return null;
+  const ancho = LADO - 4;
+  return (
+    <g className="enemigo__barra">
+      <rect className="enemigo__barra-fondo" x={x * LADO + 2} y={y * LADO} width={ancho} height="2" />
+      <rect className="enemigo__barra-valor" x={x * LADO + 2} y={y * LADO} width={ancho * Math.max(0, e.integrity) / e.maxIntegrity} height="2" />
+    </g>
+  );
+}
+
+// Ácaro de óxido: un círculo pequeño con 4 patitas.
+function Mite({ e }) {
+  const cx = e.x * LADO + LADO / 2;
+  const cy = e.y * LADO + LADO / 2 + 1;
+  return (
+    <g className="enemigo enemigo--mite" data-kind="rust_mite" aria-hidden="true">
+      <path d={`M${cx - 5} ${cy - 3}L${cx - 2} ${cy - 1}M${cx - 5} ${cy + 3}L${cx - 2} ${cy + 1}M${cx + 5} ${cy - 3}L${cx + 2} ${cy - 1}M${cx + 5} ${cy + 3}L${cx + 2} ${cy + 1}`} />
+      <circle cx={cx} cy={cy} r="3.2" />
+      <BarraIntegridad x={e.x} y={e.y} e={e} />
+    </g>
+  );
+}
+
+// Dron de limpieza: un rombo.
+function Drone({ e }) {
+  const cx = e.x * LADO + LADO / 2;
+  const cy = e.y * LADO + LADO / 2 + 1;
+  return (
+    <g className="enemigo enemigo--drone" data-kind="drone" aria-hidden="true">
+      <polygon points={`${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}`} />
+      <BarraIntegridad x={e.x} y={e.y} e={e} />
+    </g>
+  );
+}
+
+// Lata de aceite: un rectángulo con tapa.
+function OilCan({ e }) {
+  const px = e.x * LADO;
+  const py = e.y * LADO;
+  return (
+    <g className="objeto objeto--lata" data-kind="oil_can" aria-hidden="true">
+      <rect x={px + 5} y={py + 5} width="6" height="8" rx="1" />
+      <rect className="objeto__tapa" x={px + 6} y={py + 3} width="4" height="2" />
+    </g>
+  );
+}
+
+// Elige el componente de cada entidad visible.
+const DIBUJO = { rust_mite: Mite, drone: Drone, oil_can: OilCan };
+
 // El piso: un SVG con una casilla por cada posición conocida (las "unknown" no se dibujan) y el robot encima.
-function Board({ juego }) {
+function Board({ juego, children }) {
   const { data, board } = juego;
   return (
+    <div className="rustlike__tablero">
     <svg
       className="rustlike__piso"
       role="img"
@@ -70,13 +138,20 @@ function Board({ juego }) {
           tipo === 'unknown' ? null : <Tile key={`${x},${y}`} x={x} y={y} tipo={tipo} niebla={!data.visible[y][x]} />,
         ),
       )}
-      <Robot x={data.player.x} y={data.player.y} />
+      {(data.entities ?? []).map((e) => {
+        const Dibujo = DIBUJO[e.kind];
+        return Dibujo ? <Dibujo key={e.id} e={e} /> : null;
+      })}
+      <Robot x={data.player.x} y={data.player.y} parts={data.parts} />
     </svg>
+    {children}
+    </div>
   );
 }
 
-// Piso, zona, turno, puntaje y las últimas 5 líneas del registro.
-function Hud({ data }) {
+// Piso, zona, turno, puntaje, piezas, objetos y las últimas 5 líneas del registro.
+function Hud({ data, alUsar, alRecoger }) {
+  const puedeRecoger = data.allowedActions.includes('pick');
   return (
     <div className="rustlike__hud">
       <p className="rustlike__datos">
@@ -87,6 +162,46 @@ function Hud({ data }) {
           Puntaje <strong aria-label="Puntaje">{data.score}</strong>
         </span>
       </p>
+      {data.parts && (
+        <ul className="rustlike__piezas" aria-label="Piezas">
+          {PIEZAS.map(([id, nombre]) => {
+            const pieza = data.parts[id];
+            return (
+              <li key={id} className="pieza" data-condition={pieza.condition}>
+                <span className="pieza__nombre">{nombre}</span>
+                <span
+                  className="pieza__barra"
+                  role="progressbar"
+                  aria-label={`Corrosión de ${nombre}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pieza.corrosion}
+                >
+                  <span style={{ width: `${pieza.corrosion}%` }} />
+                </span>
+                <span className="pieza__estado">{ESTADOS[pieza.condition] ?? pieza.condition}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {data.items && (
+        <ul className="rustlike__objetos" aria-label="Objetos">
+          {data.items.map((item, i) => (
+            <li key={i} className="objeto-hud">
+              {item ? (
+                <>
+                  <span>{OBJETOS[item] ?? item}</span>
+                  <button className="boton" onClick={(e) => { alUsar(i); e.currentTarget.blur(); }}>Usar</button>
+                </>
+              ) : <span className="objeto-hud__vacio">Vacío</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {puedeRecoger && (
+        <button className="boton" onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
+      )}
       <ul className="rustlike__log" aria-label="Registro">
         {data.log.slice(-5).map((linea, i) => <li key={i}>{linea}</li>)}
       </ul>
@@ -94,9 +209,25 @@ function Hud({ data }) {
   );
 }
 
+// Selector de la pieza a la que se aplica el objeto del espacio `slot`.
+function Selector({ slot, alElegir, alCancelar }) {
+  return (
+    <div className="rustlike__capa rustlike__selector" role="dialog" aria-label="Elegir pieza">
+      <p>¿A qué pieza?</p>
+      <div className="rustlike__botones">
+        {PIEZAS.map(([id, nombre]) => (
+          <button key={id} className="boton" onClick={(e) => { alElegir(slot, id); e.currentTarget.blur(); }}>{nombre}</button>
+        ))}
+        <button className="boton" onClick={(e) => { alCancelar(); e.currentTarget.blur(); }}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Rustlike() {
   const [juego, setJuego] = useState(null);
   const [error, setError] = useState(null);
+  const [slot, setSlot] = useState(null); // espacio de objeto con el selector abierto
   const idActual = useRef(null); // id de la partida en curso
   const sesiones = useRef(0); // numera las creaciones para descartar respuestas tardías
   const peticiones = useRef(0); // numera las jugadas para descartar respuestas viejas
@@ -108,6 +239,7 @@ export default function Rustlike() {
     peticiones.current++;
     ocupado.current = false;
     setError(null);
+    setSlot(null);
     setJuego(null);
     if (idActual.current) borrarPartida(idActual.current);
     idActual.current = null;
@@ -153,7 +285,13 @@ export default function Rustlike() {
     }
   }, []);
 
-  // Teclado: flechas/WASD, diagonales Q E Z C, espacio o punto para esperar, Enter o > para bajar.
+  // Aplica el objeto del espacio a una pieza y cierra el selector.
+  const usar = useCallback((i, target) => {
+    setSlot(null);
+    enviar({ type: 'use', slot: i, target });
+  }, [enviar]);
+
+  // Teclado: flechas/WASD, diagonales Q E Z C, espacio o punto para esperar, Enter o > para bajar, G recoge, 1-3 usan un objeto.
   useEffect(() => {
     const alPulsar = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || typeof e.key !== 'string') return;
@@ -162,14 +300,31 @@ export default function Rustlike() {
       if (destino && (destino.isContentEditable || destino.closest('input, textarea, select'))) return;
       // En un botón o enlace solo Enter y espacio son suyos (activarlo); el resto sigue jugando.
       if (destino && destino.closest('button, a') && (e.key === 'Enter' || e.key === ' ')) return;
-      const accion = TECLAS[e.key] ?? TECLAS[e.key.toLowerCase()];
+      // Con la partida perdida las teclas no hacen nada.
+      if (juego?.status === 'lost') return;
+      // Con el selector abierto solo Esc hace algo.
+      if (slot !== null) {
+        if (e.key === 'Escape') { e.preventDefault(); setSlot(null); }
+        return;
+      }
+      const k = e.key.toLowerCase();
+      if (k === 'g') {
+        if (juego?.data.allowedActions.includes('pick')) { e.preventDefault(); enviar({ type: 'pick' }); }
+        return;
+      }
+      if (k === '1' || k === '2' || k === '3') {
+        const i = Number(k) - 1;
+        if (juego?.data.items?.[i]) { e.preventDefault(); setSlot(i); }
+        return;
+      }
+      const accion = TECLAS[e.key] ?? TECLAS[k];
       if (!accion) return;
       e.preventDefault();
       enviar(accion);
     };
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
-  }, [enviar]);
+  }, [enviar, juego, slot]);
 
   if (error && !juego) {
     return (
@@ -186,7 +341,7 @@ export default function Rustlike() {
   return (
     <div className="rustlike">
       <div className="rustlike__barra">
-        <Hud data={data} />
+        <Hud data={data} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
         <div className="rustlike__botones">
           {data.allowedActions.includes('descend') && (
             <button className="boton boton--principal" onClick={(e) => { enviar({ type: 'descend' }); e.currentTarget.blur(); }}>Bajar</button>
@@ -195,9 +350,19 @@ export default function Rustlike() {
         </div>
       </div>
       {error && <p className="sudoku__error" role="alert">{error}</p>}
-      <Board juego={juego} />
+      <Board juego={juego}>
+        {juego.status === 'lost' && (
+          <div className="rustlike__capa rustlike__fin" role="dialog" aria-label="Fin de la partida">
+            <h2>Fin de la partida</h2>
+            <p>Llegaste al piso {data.floor}</p>
+            <p>Puntaje: {data.score}</p>
+            <button className="boton boton--principal" onClick={(e) => { iniciar(); e.currentTarget.blur(); }}>Nueva partida</button>
+          </div>
+        )}
+        {slot !== null && juego.status !== 'lost' && <Selector slot={slot} alElegir={usar} alCancelar={() => setSlot(null)} />}
+      </Board>
       <p className="rustlike__ayuda">
-        Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter
+        Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter · Recoger: G · Objeto: 1 2 3
       </p>
     </div>
   );

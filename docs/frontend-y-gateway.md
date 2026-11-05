@@ -130,7 +130,7 @@ Cada pantalla de juego le dice a `Pagina` qué juego es con `musica="tetris"`; a
 | `/juegos/sudoku`, `/juegos/buscaminas`, `/juegos/snake`, `/juegos/tetris`, `/juegos/asteroids`, `/juegos/blackjack`, `/juegos/rustlike` | Cada juego |
 | `/creditos` | Autores, tecnologías y soundtracks (enlaces a las canciones) |
 
-**Controles de Rust Like:** flechas o WASD mueven; Q, E, Z y C son las diagonales; espacio o `.` esperan; Enter o `>` bajan (también el botón «Bajar», visible solo sobre la escalera). Mientras hay una petición en curso se ignoran las teclas. No tiene música todavía (`PISTAS.rustlike` es `null`).
+**Controles de Rust Like:** flechas o WASD mueven; Q, E, Z y C son las diagonales; espacio o `.` esperan; Enter o `>` bajan (también el botón «Bajar», visible solo sobre la escalera); G recoge un objeto del suelo (también el botón «Recoger», visible solo con `pick` permitido); 1, 2 y 3 usan el objeto de ese espacio (o el botón «Usar») y abren un selector de pieza (Piernas, Brazos, Sensores, Núcleo; Esc o «Cancelar» lo cierran y mientras está abierto no se mueve). Con la partida perdida aparece «Fin de la partida» y las teclas no envían nada. Mientras hay una petición en curso se ignoran las teclas. No tiene música todavía (`PISTAS.rustlike` es `null`).
 
 La ruta de GitHub es la única que abre otra pestaña; el resto son cambios de escenario dentro de la misma web.
 

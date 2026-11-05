@@ -19,6 +19,13 @@ const estado = (data = {}, extra = {}) => ({
     floor: 1, zone: 'warehouse', turn: 3, seed: 7, width: 3, height: 3,
     player: { x: 1, y: 1 },
     visible: [[true, true, true], [true, true, false], [false, false, false]],
+    parts: {
+      legs: { name: 'basic', corrosion: 0, condition: 'optimal' },
+      arms: { name: 'basic', corrosion: 30, condition: 'light' },
+      sensors: { name: 'basic', corrosion: 60, condition: 'severe' },
+      core: { name: 'basic', corrosion: 80, condition: 'critical' },
+    },
+    items: ['oil_can', null, null],
     entities: [], log: ['Bienvenido al almacén.'], events: [], allowedActions: ['move', 'wait'], score: 45,
     ...data,
   },
@@ -215,4 +222,138 @@ test('si la partida ya no existe avisa y deja «Nueva partida»', async () => {
   fireEvent.keyDown(window, { key: 'ArrowRight' });
   expect((await screen.findByRole('alert')).textContent).toBe('La partida ya no existe en el servidor. Empieza una nueva.');
   expect(screen.getByRole('button', { name: 'Nueva partida' })).toBeTruthy();
+});
+
+// Pone el estado con las acciones y datos dados enviando una espera falsa.
+async function conEstado(data) {
+  fetchFalso.mockImplementationOnce(() => json(estado(data)));
+  fireEvent.keyDown(window, { key: '.' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  await waitFor(() => expect(screen.getByText(/Turno/).textContent).toContain(String(data.turn ?? 3)));
+}
+
+test('muestra las cuatro piezas con su corrosión y estado', async () => {
+  await abrir();
+  const fila = (n) => screen.getByText(n).closest('li');
+  expect(fila('Piernas').textContent).toContain('Óptimo');
+  expect(fila('Brazos').textContent).toContain('Leve');
+  expect(fila('Sensores').textContent).toContain('Grave');
+  expect(fila('Núcleo').textContent).toContain('Crítico');
+  expect(fila('Núcleo').querySelector('[role="progressbar"]').getAttribute('aria-valuenow')).toBe('80');
+  expect(screen.getByText('Lata de aceite')).toBeTruthy();
+});
+
+test('muestra Bloqueada para una pieza bloqueada', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ parts: { ...estado().data.parts, legs: { name: 'basic', corrosion: 100, condition: 'blocked' } } }), 201));
+  await abrir();
+  expect(screen.getByText('Piernas').closest('li').textContent).toContain('Bloqueada');
+});
+
+test('dibuja los charcos', async () => {
+  const e = estado();
+  e.board[1][0] = 'puddle';
+  fetchFalso.mockImplementationOnce(() => json(e, 201));
+  await abrir();
+  expect(document.querySelectorAll('rect.casilla--puddle')).toHaveLength(1);
+});
+
+test('dibuja ácaros, drones y latas visibles', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ entities: [
+    { id: 1, kind: 'rust_mite', x: 0, y: 1, elite: null, integrity: 10, maxIntegrity: 15 },
+    { id: 2, kind: 'drone', x: 1, y: 0, elite: null, integrity: 30, maxIntegrity: 30 },
+    { id: 3, kind: 'oil_can', x: 2, y: 0 },
+  ] }), 201));
+  await abrir();
+  expect(document.querySelectorAll('g[data-kind="rust_mite"]')).toHaveLength(1);
+  expect(document.querySelectorAll('g[data-kind="drone"]')).toHaveLength(1);
+  expect(document.querySelectorAll('g[data-kind="oil_can"]')).toHaveLength(1);
+  // solo el ácaro dañado lleva barra de integridad
+  expect(document.querySelectorAll('.enemigo__barra')).toHaveLength(1);
+});
+
+test('G envía pick y el botón Recoger solo aparece con pick permitido', async () => {
+  await abrir();
+  expect(screen.queryByRole('button', { name: 'Recoger' })).toBeNull();
+  await conEstado({ turn: 4, allowedActions: ['move', 'wait', 'pick'] });
+  expect(screen.getByRole('button', { name: 'Recoger' })).toBeTruthy();
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 5 })));
+  fireEvent.keyDown(window, { key: 'g' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(2));
+  expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'pick' });
+});
+
+test('G sin pick permitido no envía nada y el botón Recoger envía pick', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: 'G' });
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+  await conEstado({ turn: 4, allowedActions: ['move', 'wait', 'pick'] });
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 5 })));
+  const boton = screen.getByRole('button', { name: 'Recoger' });
+  fireEvent.click(boton);
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(2));
+  expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'pick' });
+  expect(document.activeElement).not.toBe(boton);
+});
+
+test('usar la lata pide la pieza y envía use con target', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: '1' });
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 4 })));
+  fireEvent.click(screen.getByRole('button', { name: 'Piernas' }));
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'use', slot: 0, target: 'legs' });
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Piernas' })).toBeNull());
+});
+
+test('el botón Usar abre el selector y las teclas 2 y 3 sin objeto no hacen nada', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: '2' });
+  fireEvent.keyDown(window, { key: '3' });
+  expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Usar' }));
+  expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy();
+});
+
+test('Esc cierra el selector sin enviar nada', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: '1' });
+  expect(screen.getByRole('button', { name: 'Núcleo' })).toBeTruthy();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(screen.queryByRole('button', { name: 'Núcleo' })).toBeNull();
+  fireEvent.keyDown(window, { key: '1' });
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(screen.queryByRole('button', { name: 'Núcleo' })).toBeNull();
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+});
+
+test('con el selector abierto las flechas no mueven', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: '1' });
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: ' ' });
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+});
+
+test('al perder muestra el fin de partida y no envía teclas', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ floor: 3, score: 120 }, { status: 'lost' }), 201));
+  render(<Rustlike />);
+  await screen.findByText('Fin de la partida');
+  expect(screen.getByText('Llegaste al piso 3')).toBeTruthy();
+  expect(screen.getByText('Puntaje: 120')).toBeTruthy();
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: '1' });
+  fireEvent.keyDown(window, { key: 'g' });
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+  const nueva = screen.getAllByRole('button', { name: 'Nueva partida' });
+  fireEvent.click(nueva[0]);
+  await waitFor(() => expect(llamadas('POST', '/games')).toHaveLength(2));
+});
+
+test('el color de cada pieza sigue su estado', async () => {
+  await abrir();
+  const forma = (p) => document.querySelector(`.robot [data-part="${p}"]`);
+  expect(forma('legs').getAttribute('data-condition')).toBe('optimal');
+  expect(forma('arms').getAttribute('data-condition')).toBe('light');
+  expect(forma('sensors').getAttribute('data-condition')).toBe('severe');
+  expect(forma('core').getAttribute('data-condition')).toBe('critical');
 });
