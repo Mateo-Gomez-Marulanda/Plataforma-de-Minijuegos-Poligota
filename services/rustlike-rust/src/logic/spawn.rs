@@ -12,12 +12,18 @@ use std::ops::RangeInclusive;
 pub fn random_part(floor: u8, rng: &mut StdRng, corrosion: RangeInclusive<u8>) -> (Slot, Part) {
     let slot = HIT_SLOTS[rng.random_range(0..HIT_SLOTS.len())];
     let corrosion = rng.random_range(corrosion);
-    let model = if floor < 11 || rng.random_bool(0.5) {
+    let model = random_model(floor, slot, rng);
+    (slot, Part { model, corrosion })
+}
+
+/// Modelo al azar para un hueco: básico salvo desde el piso 11; sin rasgos (núcleo) es básico.
+fn random_model(floor: u8, slot: Slot, rng: &mut StdRng) -> PartModel {
+    let models = trait_models(slot);
+    if floor < 11 || rng.random_bool(0.5) || models.is_empty() {
         PartModel::Basic
     } else {
-        trait_models(slot)[rng.random_range(0..2)]
-    };
-    (slot, Part { model, corrosion })
+        models[rng.random_range(0..models.len())]
+    }
 }
 
 /// Vecinas transitables (8 direcciones) de una casilla.
@@ -127,8 +133,19 @@ pub fn populate(floor: u8, level: &Level, rng: &mut StdRng, next_id: &mut u32) -
         let room = &level.rooms[rng.random_range(1..level.rooms.len())];
         let mut free = free_in(room, &taken);
         // Una gotera nunca tapa un pasillo: exige 3 vecinas transitables.
+        // Y nunca queda pegada a otra gotera (Chebyshev 1).
         if what == 0 {
-            free.retain(|p| walkable_neighbours(level, *p) >= 3);
+            let others: Vec<Pos> = out
+                .iter()
+                .filter(|e| matches!(&e.kind, EntityKind::Enemy(en) if en.kind == EnemyKind::Leak))
+                .map(|e| e.pos)
+                .collect();
+            free.retain(|p| {
+                walkable_neighbours(level, *p) >= 3
+                    && others
+                        .iter()
+                        .all(|o| (o.x - p.x).abs().max((o.y - p.y).abs()) > 1)
+            });
         }
         if free.is_empty() {
             continue;
@@ -239,6 +256,14 @@ mod tests {
     }
 
     #[test]
+    fn random_model_core_falls_back_to_basic() {
+        for seed in 0..50u64 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            assert_eq!(random_model(15, Slot::Core, &mut rng), PartModel::Basic);
+        }
+    }
+
+    #[test]
     fn random_part_from_11_mixes() {
         let (mut basic, mut special) = (0, 0);
         for seed in 0..200u64 {
@@ -289,11 +314,14 @@ mod tests {
     #[test]
     fn leak_never_blocks_path() {
         use std::collections::VecDeque;
-        for seed in 0..100u64 {
+        for (floor, seed) in [1u8, 2, 5, 11, 15, 30]
+            .into_iter()
+            .flat_map(|f| (0..100u64).map(move |s| (f, s)))
+        {
             let mut rng = StdRng::seed_from_u64(seed);
-            let level = generate(5, &mut rng);
+            let level = generate(floor, &mut rng);
             let mut next = 1;
-            let es = populate(5, &level, &mut rng, &mut next);
+            let es = populate(floor, &level, &mut rng, &mut next);
             let leaks: HashSet<Pos> = es
                 .iter()
                 .filter(|e| matches!(&e.kind, EntityKind::Enemy(en) if en.kind == EnemyKind::Leak))
@@ -317,8 +345,17 @@ mod tests {
             }
             assert!(
                 seen.contains(&goal),
-                "seed {seed}: gotera bloquea el camino"
+                "piso {floor} seed {seed}: gotera bloquea el camino"
             );
+            let v: Vec<&Pos> = leaks.iter().collect();
+            for (i, a) in v.iter().enumerate() {
+                for b in &v[i + 1..] {
+                    assert!(
+                        (a.x - b.x).abs().max((a.y - b.y).abs()) > 1,
+                        "piso {floor} seed {seed}: goteras pegadas"
+                    );
+                }
+            }
         }
     }
 

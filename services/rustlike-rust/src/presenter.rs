@@ -87,7 +87,7 @@ pub fn present(id: &str, s: &GameState, events: &[Event]) -> Value {
             "score": s.score,
             "effects": {
                 "grease": s.grease_turns,
-                "jumpCooldown": if s.body.legs.model == PartModel::Spring {
+                "jumpCooldown": if s.body.legs.has_trait(PartModel::Spring) {
                     json!(s.jump_cooldown)
                 } else {
                     Value::Null
@@ -194,6 +194,10 @@ mod tests {
             v["data"]["effects"],
             json!({"grease": 4, "jumpCooldown": 7})
         );
+        // Resorte bloqueado: no salta, así que no hay cuenta atrás.
+        s.body.legs.corrosion = 100;
+        let v = present("a", &s, &[]);
+        assert_eq!(v["data"]["effects"]["jumpCooldown"], Value::Null);
     }
 
     #[test]
