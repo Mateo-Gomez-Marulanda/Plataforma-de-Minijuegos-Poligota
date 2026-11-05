@@ -150,7 +150,7 @@ function Board({ juego, children }) {
 }
 
 // Piso, zona, turno, puntaje, piezas, objetos y las últimas 5 líneas del registro.
-function Hud({ data, alUsar, alRecoger }) {
+function Hud({ data, alUsar, alRecoger, inactivo }) {
   const puedeRecoger = data.allowedActions.includes('pick');
   return (
     <div className="rustlike__hud">
@@ -192,7 +192,7 @@ function Hud({ data, alUsar, alRecoger }) {
               {item ? (
                 <>
                   <span>{OBJETOS[item] ?? item}</span>
-                  <button className="boton" onClick={(e) => { alUsar(i); e.currentTarget.blur(); }}>Usar</button>
+                  <button className="boton" disabled={inactivo} onClick={(e) => { alUsar(i); e.currentTarget.blur(); }}>Usar</button>
                 </>
               ) : <span className="objeto-hud__vacio">Vacío</span>}
             </li>
@@ -200,7 +200,7 @@ function Hud({ data, alUsar, alRecoger }) {
         </ul>
       )}
       {puedeRecoger && (
-        <button className="boton" onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
+        <button className="boton" disabled={inactivo} onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
       )}
       <ul className="rustlike__log" aria-label="Registro">
         {data.log.slice(-5).map((linea, i) => <li key={i}>{linea}</li>)}
@@ -227,6 +227,7 @@ function Selector({ slot, alElegir, alCancelar }) {
 export default function Rustlike() {
   const [juego, setJuego] = useState(null);
   const [error, setError] = useState(null);
+  const [enCurso, setEnCurso] = useState(false); // hay una petición en curso (desactiva los botones)
   const [slot, setSlot] = useState(null); // espacio de objeto con el selector abierto
   const idActual = useRef(null); // id de la partida en curso
   const sesiones = useRef(0); // numera las creaciones para descartar respuestas tardías
@@ -238,6 +239,7 @@ export default function Rustlike() {
     const numero = ++sesiones.current;
     peticiones.current++;
     ocupado.current = false;
+    setEnCurso(false);
     setError(null);
     setSlot(null);
     setJuego(null);
@@ -268,6 +270,7 @@ export default function Rustlike() {
     const id = idActual.current;
     if (!id || ocupado.current) return;
     ocupado.current = true;
+    setEnCurso(true);
     const numero = ++peticiones.current;
     try {
       const nuevo = await jugar(id, accion);
@@ -281,7 +284,7 @@ export default function Rustlike() {
           : e.message);
       }
     } finally {
-      if (numero === peticiones.current) ocupado.current = false;
+      if (numero === peticiones.current) { ocupado.current = false; setEnCurso(false); }
     }
   }, []);
 
@@ -337,14 +340,15 @@ export default function Rustlike() {
   if (!juego) return <p className="rustlike__aviso" role="status">Entrando al almacén…</p>;
 
   const { data } = juego;
+  const inactivo = enCurso || juego.status === 'lost';
 
   return (
     <div className="rustlike">
       <div className="rustlike__barra">
-        <Hud data={data} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
+        <Hud data={data} inactivo={inactivo} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
         <div className="rustlike__botones">
           {data.allowedActions.includes('descend') && (
-            <button className="boton boton--principal" onClick={(e) => { enviar({ type: 'descend' }); e.currentTarget.blur(); }}>Bajar</button>
+            <button className="boton boton--principal" disabled={inactivo} onClick={(e) => { enviar({ type: 'descend' }); e.currentTarget.blur(); }}>Bajar</button>
           )}
           <button className="boton" onClick={(e) => { iniciar(); e.currentTarget.blur(); }}>Nueva partida</button>
         </div>

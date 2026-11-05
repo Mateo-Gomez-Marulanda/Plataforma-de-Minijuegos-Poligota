@@ -357,3 +357,20 @@ test('el color de cada pieza sigue su estado', async () => {
   expect(forma('sensors').getAttribute('data-condition')).toBe('severe');
   expect(forma('core').getAttribute('data-condition')).toBe('critical');
 });
+
+test('Usar, Recoger y Bajar quedan inactivos al perder', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ allowedActions: ['move', 'pick', 'descend'] }, { status: 'lost' }), 201));
+  render(<Rustlike />);
+  await screen.findByText('Fin de la partida');
+  for (const n of ['Usar', 'Recoger', 'Bajar']) expect(screen.getByRole('button', { name: n }).disabled).toBe(true);
+});
+
+test('Usar se desactiva mientras hay una petición en curso', async () => {
+  await abrir();
+  let resolver;
+  fetchFalso.mockImplementationOnce(() => new Promise((r) => { resolver = r; }));
+  fireEvent.keyDown(window, { key: '.' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(true));
+  resolver({ ok: true, status: 200, json: () => Promise.resolve(estado({ turn: 4 })) });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(false));
+});

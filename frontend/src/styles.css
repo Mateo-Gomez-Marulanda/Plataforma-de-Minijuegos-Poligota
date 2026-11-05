@@ -1092,6 +1092,11 @@ a:focus-visible {
   --almacen-muro: #2a2623;
   --almacen-escalera: #f4c430;
   --almacen-niebla: rgba(20, 25, 58, 0.55);
+  --pieza-optimal: #9aa3ad;
+  --pieza-light: #c89a6a;
+  --pieza-severe: #c8642a;
+  --pieza-critical: #8a4a24;
+  --pieza-blocked: #5a3a24;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -1132,16 +1137,11 @@ a:focus-visible {
 .casilla--niebla { opacity: 0.45; }
 
 .casilla--puddle { fill: #2f6f9f; animation: charco 2.4s ease-in-out infinite alternate; }
+/* Un charco recordado (en la niebla) no parpadea: conserva la opacidad de la niebla */
+.casilla--puddle.casilla--niebla { animation: none; opacity: 0.45; }
 @keyframes charco { from { opacity: 0.65; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .casilla--puddle { animation: none; } }
 
-.robot {
-  --pieza-optimal: #9aa3ad;
-  --pieza-light: #c89a6a;
-  --pieza-severe: #c8642a;
-  --pieza-critical: #8a4a24;
-  --pieza-blocked: #5a3a24;
-}
 .robot__cuerpo { fill: #4a4f55; }
 .robot__pieza[data-condition='optimal'] { fill: var(--pieza-optimal); }
 .robot__pieza[data-condition='light'] { fill: var(--pieza-light); }
@@ -1155,6 +1155,7 @@ a:focus-visible {
 .enemigo--drone polygon { fill: #7aa6c2; stroke: #2a2623; stroke-width: 0.6; }
 .objeto--lata rect { fill: #d9b13b; }
 .objeto--lata .objeto__tapa { fill: #8a6d1c; }
+.enemigo, .objeto--lata { shape-rendering: geometricPrecision; }
 .enemigo__barra-fondo { fill: #2a2623; }
 .enemigo__barra-valor { fill: #6bbf59; }
 
@@ -1172,16 +1173,17 @@ a:focus-visible {
   text-align: center;
 }
 .rustlike__capa h2 { margin: 0; }
+.rustlike__capa .rustlike__botones { flex-wrap: wrap; justify-content: center; padding: 0 0.5rem; }
 
 .rustlike__piezas, .rustlike__objetos { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
 .pieza { display: grid; grid-template-columns: 6rem 8rem auto; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .pieza__barra { display: block; height: 0.5rem; background: #2a2623; border-radius: 0.25rem; overflow: hidden; }
-.pieza__barra span { display: block; height: 100%; background: var(--pieza-optimal, #9aa3ad); }
-.pieza[data-condition='light'] .pieza__barra span { background: #c89a6a; }
-.pieza[data-condition='severe'] .pieza__barra span { background: #c8642a; }
-.pieza[data-condition='critical'] .pieza__barra span { background: #8a4a24; }
-.pieza[data-condition='blocked'] .pieza__barra span { background: #5a3a24; }
-.objeto-hud { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+.pieza__barra span { display: block; height: 100%; background: var(--pieza-optimal); }
+.pieza[data-condition='light'] .pieza__barra span { background: var(--pieza-light); }
+.pieza[data-condition='severe'] .pieza__barra span { background: var(--pieza-severe); }
+.pieza[data-condition='critical'] .pieza__barra span { background: var(--pieza-critical); }
+.pieza[data-condition='blocked'] .pieza__barra span { background: var(--pieza-blocked); }
+.objeto-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .objeto-hud__vacio { color: var(--papel-tenue); }
 
 .rustlike__ayuda { color: var(--papel-tenue); font-size: 0.85rem; }
