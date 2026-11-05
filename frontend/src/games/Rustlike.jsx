@@ -54,7 +54,10 @@ const SUELO = new Set(['oil_can', 'lubricant_spray', 'protective_grease', 'part'
 const SIN_OBJETIVO = new Set(['lubricant_spray', 'protective_grease']);
 
 // Inicial del hueco en el engranaje de una pieza del suelo.
-const INICIAL = { legs: 'P', arms: 'B', sensors: 'S' };
+const INICIAL = { legs: 'P', arms: 'B', sensors: 'S', core: 'N' };
+
+// Texto de una pieza del suelo: modelo y corrosión.
+const textoPieza = (e) => `${MODELOS[`${e.slot}:${e.name}`] ?? e.slot} (${e.corrosion})`;
 
 // Una casilla conocida; la clase depende del tipo y `niebla` indica que se vio pero ya no es visible.
 const Tile = memo(function Tile({ x, y, tipo, niebla }) {
@@ -183,6 +186,7 @@ function FloorPart({ e }) {
   const cy = e.y * LADO + LADO / 2;
   return (
     <g className="objeto objeto--pieza" data-kind="part" aria-hidden="true">
+      <title>{textoPieza(e)}</title>
       <circle cx={cx} cy={cy} r="5.5" strokeDasharray="2 1.2" />
       <circle className="objeto__centro" cx={cx} cy={cy} r="4" />
       <text x={cx} y={cy + 2.2} textAnchor="middle" fontSize="6">{INICIAL[e.slot] ?? '?'}</text>
@@ -272,6 +276,7 @@ function Hud({ data, alUsar, alRecoger, alCambiar, inactivo }) {
   const puedeCambiar = data.allowedActions.includes('swap');
   const grasa = data.effects?.grease ?? 0;
   const salto = data.effects?.jumpCooldown ?? null;
+  const delSuelo = puedeCambiar ? data.entities?.find((e) => e.kind === 'part' && e.x === data.player.x && e.y === data.player.y) : null;
   return (
     <aside className="rustlike__hud" aria-label="Estado del robot">
       {data.parts && (
@@ -320,6 +325,7 @@ function Hud({ data, alUsar, alRecoger, alCambiar, inactivo }) {
       {puedeRecoger && (
         <button className="boton" disabled={inactivo} onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
       )}
+      {delSuelo && <p className="rustlike__suelo">En el suelo: {textoPieza(delSuelo)}</p>}
       {puedeCambiar && (
         <button className="boton" disabled={inactivo} onClick={(e) => { alCambiar(); e.currentTarget.blur(); }}>Cambiar pieza</button>
       )}

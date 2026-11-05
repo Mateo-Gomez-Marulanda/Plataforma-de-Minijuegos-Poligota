@@ -1163,35 +1163,35 @@ a:focus-visible {
 @keyframes charco { from { opacity: 0.65; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .casilla--puddle { animation: none; } }
 
-.robot__cuerpo { fill: #4a4f55; }
-.robot__pieza[data-condition='optimal'] { fill: var(--pieza-optimal); }
-.robot__pieza[data-condition='light'] { fill: var(--pieza-light); }
-.robot__pieza[data-condition='severe'] { fill: var(--pieza-severe); }
-.robot__pieza[data-condition='critical'] { fill: var(--pieza-critical); }
-.robot__pieza[data-condition='blocked'] { fill: var(--pieza-blocked); }
-.robot__ojo { fill: var(--tinta); }
+.rustlike .robot__cuerpo { fill: #4a4f55; }
+.rustlike .robot__pieza[data-condition='optimal'] { fill: var(--pieza-optimal); }
+.rustlike .robot__pieza[data-condition='light'] { fill: var(--pieza-light); }
+.rustlike .robot__pieza[data-condition='severe'] { fill: var(--pieza-severe); }
+.rustlike .robot__pieza[data-condition='critical'] { fill: var(--pieza-critical); }
+.rustlike .robot__pieza[data-condition='blocked'] { fill: var(--pieza-blocked); }
+.rustlike .robot__ojo { fill: var(--tinta); }
 
-.enemigo--mite circle { fill: #b5532a; }
-.enemigo--mite path { stroke: #b5532a; stroke-width: 1; fill: none; }
-.enemigo--drone polygon { fill: #7aa6c2; stroke: #2a2623; stroke-width: 0.6; }
-.objeto--lata rect { fill: #d9b13b; }
-.objeto--lata .objeto__tapa { fill: #8a6d1c; }
-.enemigo, .objeto { shape-rendering: geometricPrecision; }
-.enemigo--torreta > rect { fill: #6b6f75; stroke: #2a2623; stroke-width: 0.6; }
-.enemigo--torreta .enemigo__canon { fill: #2a2623; }
-.enemigo--oxidado > rect { fill: #8a5a2b; stroke: #2a2623; stroke-width: 0.5; }
-.enemigo--gotera path { fill: #4d9be0; stroke: #1f4f7a; stroke-width: 0.6; }
-.enemigo[data-detected='true'] { opacity: 0.5; }
-.enemigo[data-detected='true'] > rect, .enemigo[data-detected='true'] > polygon, .enemigo[data-detected='true'] > circle, .enemigo[data-detected='true'] > path { stroke: #e8e1d5; stroke-width: 0.8; stroke-dasharray: 2 1.5; }
-.objeto--pieza circle { fill: #8f8a82; stroke: #4a4f55; stroke-width: 1.2; }
-.objeto--pieza .objeto__centro { fill: #c9c3b8; stroke: none; }
-.objeto--pieza text { fill: #2a2623; font-family: sans-serif; font-weight: bold; }
-.objeto--spray rect { fill: #5fb0a0; }
-.objeto--spray path { stroke: #5fb0a0; stroke-width: 0.8; fill: none; }
-.objeto--grasa rect { fill: #c9a24b; }
-.objeto--spray .objeto__tapa, .objeto--grasa .objeto__tapa { fill: #4a4f55; }
-.enemigo .enemigo__barra-fondo { fill: #2a2623; stroke: none; }
-.enemigo .enemigo__barra-valor { fill: #6bbf59; stroke: none; }
+.rustlike .enemigo--mite circle { fill: #b5532a; }
+.rustlike .enemigo--mite path { stroke: #b5532a; stroke-width: 1; fill: none; }
+.rustlike .enemigo--drone polygon { fill: #7aa6c2; stroke: #2a2623; stroke-width: 0.6; }
+.rustlike .objeto--lata rect { fill: #d9b13b; }
+.rustlike .objeto--lata .objeto__tapa { fill: #8a6d1c; }
+.rustlike .enemigo, .rustlike .objeto { shape-rendering: geometricPrecision; }
+.rustlike .enemigo--torreta > rect { fill: #6b6f75; stroke: #2a2623; stroke-width: 0.6; }
+.rustlike .enemigo--torreta .enemigo__canon { fill: #2a2623; }
+.rustlike .enemigo--oxidado > rect { fill: #8a5a2b; stroke: #2a2623; stroke-width: 0.5; }
+.rustlike .enemigo--gotera path { fill: #4d9be0; stroke: #1f4f7a; stroke-width: 0.6; }
+.rustlike .enemigo[data-detected='true'] { opacity: 0.5; }
+.rustlike .enemigo[data-detected='true'] > rect, .rustlike .enemigo[data-detected='true'] > polygon, .rustlike .enemigo[data-detected='true'] > circle, .rustlike .enemigo[data-detected='true'] > path { stroke: #e8e1d5; stroke-width: 0.8; stroke-dasharray: 2 1.5; }
+.rustlike .objeto--pieza circle { fill: #8f8a82; stroke: #4a4f55; stroke-width: 1.2; }
+.rustlike .objeto--pieza .objeto__centro { fill: #c9c3b8; stroke: none; }
+.rustlike .objeto--pieza text { fill: #2a2623; font-family: sans-serif; font-weight: bold; }
+.rustlike .objeto--spray rect { fill: #5fb0a0; }
+.rustlike .objeto--spray path { stroke: #5fb0a0; stroke-width: 0.8; fill: none; }
+.rustlike .objeto--grasa rect { fill: #c9a24b; }
+.rustlike .objeto--spray .objeto__tapa, .rustlike .objeto--grasa .objeto__tapa { fill: #4a4f55; }
+.rustlike .enemigo .enemigo__barra-fondo { fill: #2a2623; stroke: none; }
+.rustlike .enemigo .enemigo__barra-valor { fill: #6bbf59; stroke: none; }
 
 .rustlike__tablero { position: relative; }
 .rustlike__capa {

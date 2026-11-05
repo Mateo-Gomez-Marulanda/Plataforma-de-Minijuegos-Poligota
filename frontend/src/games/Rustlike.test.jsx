@@ -445,7 +445,8 @@ test('dibuja torretas, robots oxidados, goteras, piezas y consumibles', async ()
   for (const k of ['turret', 'rusty_robot', 'leak', 'part', 'lubricant_spray', 'protective_grease']) {
     expect(document.querySelectorAll(`g[data-kind="${k}"]`)).toHaveLength(1);
   }
-  expect(document.querySelector('g[data-kind="part"]').textContent).toBe('B');
+  expect(document.querySelector('g[data-kind="part"] text').textContent).toBe('B');
+  expect(document.querySelector('g[data-kind="part"] title').textContent).toBe('Brazos con taladro (20)');
   // solo el robot dañado lleva barra; la gotera nunca
   expect(document.querySelectorAll('.enemigo__barra')).toHaveLength(1);
 });
@@ -486,6 +487,16 @@ test('X y el botón Cambiar pieza envían swap solo si está permitido', async (
   await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(4));
   expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'swap' });
   expect(document.activeElement).not.toBe(boton);
+});
+
+test('con swap permitido el panel muestra la pieza del suelo', async () => {
+  await abrir();
+  expect(screen.queryByText(/En el suelo/)).toBeNull();
+  await esperar({
+    turn: 4, allowedActions: ['move', 'wait', 'swap'], player: { x: 0, y: 1 },
+    entities: [{ id: 4, kind: 'part', slot: 'arms', name: 'drill', corrosion: 20, x: 0, y: 1 }],
+  });
+  expect(screen.getByText('En el suelo: Brazos con taladro (20)')).toBeTruthy();
 });
 
 test('usar spray o grasa no abre el selector y envía use sin target', async () => {
