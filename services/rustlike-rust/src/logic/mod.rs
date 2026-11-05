@@ -1,5 +1,6 @@
 // Lógica pura del juego, sin dependencias de red: partida nueva y aplicación de acciones.
 pub mod action;
+pub mod corrosion;
 pub mod fov;
 pub mod map;
 pub mod score;
