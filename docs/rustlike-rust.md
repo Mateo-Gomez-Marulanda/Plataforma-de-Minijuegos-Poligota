@@ -207,7 +207,7 @@ Los ataques **siempre aciertan**. El azar solo interviene en:
 
 ### 6.6 Puntaje
 
-Destruir a un enemigo y completar un piso valen lo mismo: **20 puntos**, más **5 cada 50 pisos** (pisos 1–50: 20, 51–100: 25, 101–150: 30… 251–255: 40). Se usa el valor del piso en el que ocurre el hecho.
+Destruir a un enemigo y completar un piso valen lo mismo: **20 puntos**, más **5 cada 50 pisos** (pisos 1–50: 20, 51–100: 25, 101–150: 30… 251–255: 45). Se usa el valor del piso en el que ocurre el hecho.
 
 - Al bajar por la escalera cuenta el piso completado (el que se deja atrás).
 - Una caída por hueco de ascensor suma un piso completado por cada piso caído.
