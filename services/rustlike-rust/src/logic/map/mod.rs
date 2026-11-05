@@ -8,6 +8,7 @@ pub enum Tile {
     Wall,
     Floor,
     Stairs,
+    Puddle,
 }
 
 impl Tile {
@@ -17,6 +18,7 @@ impl Tile {
             Tile::Wall => "wall",
             Tile::Floor => "floor",
             Tile::Stairs => "stairs",
+            Tile::Puddle => "puddle",
         }
     }
 }
@@ -67,9 +69,9 @@ impl Map {
         }
     }
 
-    /// Se puede pisar el suelo y la escalera.
+    /// Se puede pisar el suelo, la escalera y los charcos.
     pub fn is_walkable(&self, pos: Pos) -> bool {
-        matches!(self.get(pos), Tile::Floor | Tile::Stairs)
+        matches!(self.get(pos), Tile::Floor | Tile::Stairs | Tile::Puddle)
     }
 }
 

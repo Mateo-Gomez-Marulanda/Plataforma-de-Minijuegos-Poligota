@@ -7,6 +7,7 @@ use rand::RngExt;
 const MAX_ATTEMPTS: usize = 80;
 const MAX_ROOMS: usize = 12;
 const LAST_FLOOR: u8 = 255;
+const MAX_PUDDLE_ATTEMPTS: usize = 200;
 
 /// Habitación rectangular (esquina superior izquierda y tamaño).
 #[derive(Debug, Clone)]
@@ -88,6 +89,27 @@ fn carve_corridor(map: &mut Map, a: Pos, b: Pos, rng: &mut StdRng) {
     }
 }
 
+/// Reparte entre 4 y 6 charcos en casillas de suelo de habitaciones al azar, sin tocar inicio ni escalera.
+fn place_puddles(map: &mut Map, rooms: &[Room], start: Pos, rng: &mut StdRng) {
+    let count = rng.random_range(4..=6);
+    let mut placed = 0;
+    for _ in 0..MAX_PUDDLE_ATTEMPTS {
+        if placed >= count {
+            break;
+        }
+        let room = &rooms[rng.random_range(0..rooms.len())];
+        let pos = Pos {
+            x: rng.random_range(room.x..room.x + room.w),
+            y: rng.random_range(room.y..room.y + room.h),
+        };
+        // Solo suelo libre: excluye escalera y charcos ya puestos.
+        if pos != start && map.get(pos) == Tile::Floor {
+            map.set(pos, Tile::Puddle);
+            placed += 1;
+        }
+    }
+}
+
 /// Genera el piso indicado de forma determinista según el estado de `rng`.
 pub fn generate(floor: u8, rng: &mut StdRng) -> Level {
     let (width, height) = Zone::for_floor(floor).size();
@@ -115,6 +137,8 @@ pub fn generate(floor: u8, rng: &mut StdRng) -> Level {
         map.set(pos, Tile::Stairs);
         Some(pos)
     };
+    // Los charcos van al final para no alterar la disposición de habitaciones de una semilla.
+    place_puddles(&mut map, &rooms, start, rng);
     Level {
         map,
         start,
@@ -241,5 +265,53 @@ mod tests {
         let level = generate(255, &mut rng(7));
         assert_eq!(level.stairs, None);
         assert_eq!(count_stairs(&level.map), 0);
+    }
+
+    fn puddles(level: &Level) -> Vec<Pos> {
+        let mut out = Vec::new();
+        for y in 0..level.map.height as i32 {
+            for x in 0..level.map.width as i32 {
+                if level.map.get(Pos { x, y }) == Tile::Puddle {
+                    out.push(Pos { x, y });
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn puddles_per_floor() {
+        for seed in 0..100 {
+            let n = puddles(&generate(1, &mut rng(seed))).len();
+            assert!((4..=6).contains(&n), "seed {seed}: {n} charcos");
+        }
+        assert!((4..=6).contains(&puddles(&generate(255, &mut rng(7))).len()));
+    }
+
+    #[test]
+    fn puddles_avoid_start_and_stairs() {
+        for seed in 0..100 {
+            let level = generate(1, &mut rng(seed));
+            for p in puddles(&level) {
+                assert_ne!(p, level.start, "seed {seed}");
+                assert_ne!(Some(p), level.stairs, "seed {seed}");
+            }
+        }
+    }
+
+    #[test]
+    fn puddles_are_inside_rooms() {
+        for seed in 0..100 {
+            let level = generate(1, &mut rng(seed));
+            for p in puddles(&level) {
+                assert!(
+                    level
+                        .rooms
+                        .iter()
+                        .any(|r| p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h),
+                    "seed {seed}"
+                );
+            }
+        }
     }
 }
