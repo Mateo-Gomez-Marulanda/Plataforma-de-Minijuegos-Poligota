@@ -70,6 +70,11 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
                 return Err(InvalidMove("Un muro bloquea el paso.".to_string()));
             }
             if let Some(idx) = combat::enemy_at(&state.entities, dest) {
+                if matches!(&state.entities[idx].kind,
+                    entities::EntityKind::Enemy(e) if e.kind.indestructible())
+                {
+                    return Err(InvalidMove("La gotera es indestructible.".to_string()));
+                }
                 attack(state, idx, &mut events);
             } else {
                 walk(state, dest, &mut events);
@@ -119,16 +124,37 @@ fn attack(state: &mut GameState, idx: usize, events: &mut Vec<Event>) {
         return;
     };
     enemy.integrity = enemy.integrity.saturating_sub(dmg);
-    let (dead, name) = (enemy.integrity == 0, contracted(enemy.kind.name()));
+    let (dead, name, kind) = (
+        enemy.integrity == 0,
+        contracted(enemy.kind.name()),
+        enemy.kind,
+    );
     events.push(Event::EnemyHit);
     push_log(state, format!("Golpeas {name} (−{dmg})."));
     if dead {
-        state.entities.remove(idx);
+        let pos = state.entities.remove(idx).pos;
         let points = score::points_for_floor(state.floor);
         state.score += points;
         events.push(Event::EnemyDestroyed);
         push_log(state, format!("Destruyes {name}. +{points} puntos."));
+        if kind == entities::EnemyKind::RustyRobot {
+            drop_part(state, pos);
+        }
     }
+}
+
+/// El robot oxidado suelta una pieza en su casilla.
+fn drop_part(state: &mut GameState, pos: map::Pos) {
+    let (slot, part) = spawn::random_part(state.floor, &mut state.rng, 30..=70);
+    let id = state.next_id;
+    state.next_id += 1;
+    let label = corrosion::part_label(slot, part.model).to_lowercase();
+    state.entities.push(entities::Entity {
+        id,
+        pos,
+        kind: entities::EntityKind::Part { slot, part },
+    });
+    push_log(state, format!("El robot oxidado suelta {label}."));
 }
 
 /// Contrae "el X" en "al X" para los mensajes de ataque.
@@ -284,6 +310,9 @@ fn check_core(state: &mut GameState, events: &mut Vec<Event>) {
 
 /// Fase de entorno tras un turno consumido: corrosión pasiva, propagación y visión.
 fn end_turn(state: &mut GameState, events: &mut Vec<Event>) {
+    if state.turn.is_multiple_of(6) {
+        leaks_drip(state);
+    }
     let mut core_gain = 0;
     if state.turn.is_multiple_of(10) {
         core_gain += 1;
@@ -304,6 +333,32 @@ fn end_turn(state: &mut GameState, events: &mut Vec<Event>) {
     }
     check_core(state, events);
     refresh_vision(state);
+}
+
+/// Cada gotera convierte en charco una casilla de suelo vecina al azar.
+fn leaks_drip(state: &mut GameState) {
+    let mut leaks: Vec<(u32, map::Pos)> = state
+        .entities
+        .iter()
+        .filter(|e| matches!(&e.kind, entities::EntityKind::Enemy(en) if en.kind.indestructible()))
+        .map(|e| (e.id, e.pos))
+        .collect();
+    leaks.sort_unstable_by_key(|l| l.0);
+    for (_, pos) in leaks {
+        let floors: Vec<map::Pos> = (-1..=1)
+            .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+            .filter(|d| *d != (0, 0))
+            .map(|(dx, dy)| map::Pos {
+                x: pos.x + dx,
+                y: pos.y + dy,
+            })
+            .filter(|p| state.map.get(*p) == map::Tile::Floor)
+            .collect();
+        if !floors.is_empty() {
+            let pick = floors[state.rng.random_range(0..floors.len())];
+            state.map.set(pick, map::Tile::Puddle);
+        }
+    }
 }
 
 /// Recalcula la visión actual y acumula lo visto en `seen`.
@@ -953,6 +1008,170 @@ mod tests {
                 assert_ne!(e.pos, s.player);
             }
         }
+    }
+
+    #[test]
+    fn turret_shoots_in_line_within_5() {
+        use entities::EnemyKind::Turret;
+        // Recto a 5, diagonal a 3 y adyacente: dispara.
+        for (x, y) in [(15, 10), (13, 13), (11, 10)] {
+            let mut s = arena(2);
+            add_enemy(&mut s, Turret, x, y);
+            let r = apply_action(&mut s, Action::Wait).unwrap();
+            assert!(r.contains(&Event::PlayerHit), "({x},{y})");
+            let last = s.log.last().unwrap();
+            assert!(last.starts_with("La torreta te dispara. "), "{last}");
+            assert!(HIT_SLOTS.iter().any(|sl| s.body.part(*sl).corrosion == 5));
+        }
+        // A 6 casillas, o fuera de las ocho líneas, no dispara.
+        for (x, y) in [(16, 10), (12, 11 + 2)] {
+            let mut s = arena(2);
+            add_enemy(&mut s, Turret, x, y);
+            let r = apply_action(&mut s, Action::Wait).unwrap();
+            assert!(!r.contains(&Event::PlayerHit), "({x},{y})");
+        }
+    }
+
+    #[test]
+    fn turret_blocked_by_wall_or_enemy() {
+        use entities::EnemyKind::{RustMite, Turret};
+        let mut s = arena(2);
+        add_enemy(&mut s, Turret, 15, 10);
+        s.map.set(Pos { x: 13, y: 10 }, Tile::Wall);
+        let r = apply_action(&mut s, Action::Wait).unwrap();
+        assert!(!r.contains(&Event::PlayerHit));
+        let mut s = arena(2);
+        add_enemy(&mut s, Turret, 15, 10);
+        add_enemy(&mut s, RustMite, 13, 10);
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert!(!s.log.iter().any(|l| l.contains("torreta")));
+    }
+
+    #[test]
+    fn turret_never_moves() {
+        use entities::EnemyKind::Turret;
+        let mut s = arena(3);
+        let id = add_enemy(&mut s, Turret, 20, 7);
+        for _ in 0..40 {
+            s.body = Body::new();
+            apply_action(&mut s, Action::Wait).unwrap();
+            assert_eq!(enemy_pos(&s, id), Pos { x: 20, y: 7 });
+        }
+    }
+
+    #[test]
+    fn rusty_robot_acts_every_other_turn() {
+        use entities::EnemyKind::RustyRobot;
+        let mut s = arena(3);
+        let id = add_enemy(&mut s, RustyRobot, 18, 10);
+        let mut dists = Vec::new();
+        for _ in 0..4 {
+            apply_action(&mut s, Action::Wait).unwrap();
+            dists.push(cheb(enemy_pos(&s, id), s.player));
+        }
+        assert_eq!(dists, vec![7, 7, 6, 6]);
+        // Adyacente: golpea solo en turnos alternos.
+        let mut s = arena(3);
+        add_enemy(&mut s, RustyRobot, 11, 10);
+        let hits: Vec<bool> = (0..4)
+            .map(|_| {
+                apply_action(&mut s, Action::Wait)
+                    .unwrap()
+                    .contains(&Event::PlayerHit)
+            })
+            .collect();
+        assert_eq!(hits, vec![true, false, true, false]);
+    }
+
+    #[test]
+    fn rusty_robot_drops_part_on_death() {
+        use entities::EnemyKind::RustyRobot;
+        let mut s = arena(4);
+        let id = add_enemy(&mut s, RustyRobot, 11, 10);
+        if let Some(entities::EntityKind::Enemy(e)) = s
+            .entities
+            .iter_mut()
+            .find(|e| e.id == id)
+            .map(|e| &mut e.kind)
+        {
+            e.integrity = 1;
+        }
+        let next = s.next_id;
+        apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        let part = s
+            .entities
+            .iter()
+            .find(|e| e.pos == Pos { x: 11, y: 10 })
+            .expect("pieza en la casilla");
+        assert_eq!(part.id, next);
+        assert_eq!(s.next_id, next + 1);
+        let entities::EntityKind::Part { slot, part: p } = &part.kind else {
+            panic!("no es una pieza");
+        };
+        assert!((30..=70).contains(&p.corrosion));
+        let label = corrosion::part_label(*slot, p.model).to_lowercase();
+        let n = s.log.len();
+        assert_eq!(s.log[n - 1], format!("El robot oxidado suelta {label}."));
+        assert!(s.log[n - 2].starts_with("Destruyes al robot oxidado."));
+    }
+
+    #[test]
+    fn leak_is_indestructible_and_costs_no_turn() {
+        use entities::EnemyKind::Leak;
+        let mut s = arena(5);
+        add_enemy(&mut s, Leak, 11, 10);
+        let mut twin = arena(5);
+        add_enemy(&mut twin, Leak, 11, 10);
+        let r = apply_action(&mut s, Action::Move { dir: Dir::Right });
+        assert_eq!(
+            r,
+            Err(InvalidMove("La gotera es indestructible.".to_string()))
+        );
+        assert_eq!(s.turn, 0);
+        assert_eq!(s.log.len(), 1);
+        assert_eq!(s.rng.random::<u64>(), twin.rng.random::<u64>());
+    }
+
+    #[test]
+    fn leak_drips_every_6_turns() {
+        use entities::EnemyKind::Leak;
+        let puddles = |s: &GameState| {
+            (0..s.map.height as i32)
+                .flat_map(|y| (0..s.map.width as i32).map(move |x| Pos { x, y }))
+                .filter(|p| s.map.get(*p) == Tile::Puddle)
+                .collect::<Vec<_>>()
+        };
+        let mut s = arena(6);
+        add_enemy(&mut s, Leak, 20, 8);
+        for _ in 0..5 {
+            apply_action(&mut s, Action::Wait).unwrap();
+        }
+        assert!(puddles(&s).is_empty());
+        apply_action(&mut s, Action::Wait).unwrap();
+        let p = puddles(&s);
+        assert_eq!(p.len(), 1);
+        assert_eq!(cheb(p[0], Pos { x: 20, y: 8 }), 1);
+        // Sin vecinas de suelo (muros y escalera), no hace nada.
+        let mut s = arena(6);
+        add_enemy(&mut s, Leak, 20, 8);
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if (dx, dy) != (0, 0) {
+                    s.map.set(
+                        Pos {
+                            x: 20 + dx,
+                            y: 8 + dy,
+                        },
+                        Tile::Wall,
+                    );
+                }
+            }
+        }
+        s.map.set(Pos { x: 21, y: 8 }, Tile::Stairs);
+        for _ in 0..6 {
+            apply_action(&mut s, Action::Wait).unwrap();
+        }
+        assert!(puddles(&s).is_empty());
     }
 
     #[test]

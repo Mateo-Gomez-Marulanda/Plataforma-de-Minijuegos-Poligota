@@ -79,3 +79,51 @@ pub fn present(id: &str, s: &GameState, events: &[Event]) -> Value {
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::logic::corrosion::{Part, PartModel, Slot};
+    use crate::logic::entities::{Entity, EntityKind};
+    use crate::logic::{new_game, GameState};
+
+    /// Partida con una sola entidad colocada sobre una casilla visible.
+    fn with_entity(kind: EntityKind) -> (GameState, u32) {
+        let mut s = new_game(1);
+        s.entities.clear();
+        let id = 77;
+        s.entities.push(Entity {
+            id,
+            pos: s.player,
+            kind,
+        });
+        (s, id)
+    }
+
+    #[test]
+    fn part_entity_shape() {
+        let part = Part {
+            model: PartModel::Drill,
+            corrosion: 40,
+        };
+        let (s, id) = with_entity(EntityKind::Part {
+            slot: Slot::Arms,
+            part,
+        });
+        let v = present("abc123", &s, &[]);
+        assert_eq!(
+            v["data"]["entities"][0],
+            json!({"id": id, "kind": "part", "slot": "arms", "name": "drill",
+                   "corrosion": 40, "x": s.player.x, "y": s.player.y})
+        );
+    }
+
+    #[test]
+    fn leak_entity_has_null_integrity() {
+        use crate::logic::entities::{Enemy, EnemyKind};
+        let (s, _) = with_entity(EntityKind::Enemy(Enemy::new(EnemyKind::Leak, 1)));
+        let e = &present("abc123", &s, &[])["data"]["entities"][0];
+        assert_eq!(e["kind"], "leak");
+        assert!(e["integrity"].is_null() && e["maxIntegrity"].is_null());
+    }
+}

@@ -315,3 +315,23 @@ async fn bad_use_bodies() {
         assert_eq!(r["error"], "INVALID_REQUEST");
     }
 }
+
+#[tokio::test]
+async fn phase4_entities_contract() {
+    let a = app();
+    // Busca una partida con una gotera a la vista.
+    for seed in 0..200 {
+        let v = create(&a, seed).await;
+        let leak = v["data"]["entities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["kind"] == "leak");
+        if let Some(e) = leak {
+            assert!(e["integrity"].is_null());
+            assert!(e["maxIntegrity"].is_null());
+            return;
+        }
+    }
+    // Sin gotera visible en ninguna semilla: la forma ya la cubre una prueba del presentador.
+}

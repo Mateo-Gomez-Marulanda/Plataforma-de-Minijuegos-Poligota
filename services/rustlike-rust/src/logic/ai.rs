@@ -4,7 +4,7 @@ use super::apply_corrosion;
 use super::combat::enemy_at;
 use super::corrosion::HIT_SLOTS;
 use super::entities::{EnemyKind, EntityKind};
-use super::map::Pos;
+use super::map::{Map, Pos};
 use super::pathfinding::next_step;
 use super::state::{GameState, Status};
 use rand::RngExt;
@@ -24,6 +24,29 @@ const WANDER: [(i32, i32); 8] = [
 /// Distancia de Chebyshev entre dos casillas.
 fn distance(a: Pos, b: Pos) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
+}
+
+/// Hay línea recta (8 direcciones) de `from` a `to` a distancia <= `max`, con las
+/// casillas intermedias transitables y sin enemigos.
+pub(crate) fn clear_line(
+    map: &Map,
+    entities: &[super::entities::Entity],
+    from: Pos,
+    to: Pos,
+    max: i32,
+) -> bool {
+    let (dx, dy) = (to.x - from.x, to.y - from.y);
+    let dist = dx.abs().max(dy.abs());
+    if dist == 0 || dist > max || !(dx == 0 || dy == 0 || dx.abs() == dy.abs()) {
+        return false;
+    }
+    (1..dist).all(|i| {
+        let p = Pos {
+            x: from.x + dx.signum() * i,
+            y: from.y + dy.signum() * i,
+        };
+        map.is_walkable(p) && enemy_at(entities, p).is_none()
+    })
 }
 
 /// Hace actuar a cada enemigo por id ascendente; se detiene si la partida termina.
@@ -58,16 +81,28 @@ fn act(state: &mut GameState, id: u32, events: &mut Vec<Event>) {
     if enemy.kind == EnemyKind::Drone && visible {
         enemy.awake = true;
     }
+    // El robot oxidado es lento: descansa un turno de cada dos.
+    if enemy.kind == EnemyKind::RustyRobot {
+        let rest = enemy.rested;
+        enemy.rested = !rest;
+        if rest {
+            return;
+        }
+    }
     let (kind, awake, hit) = (enemy.kind, enemy.awake, enemy.hit);
     let dist = distance(pos, player);
-    // Las nuevas criaturas se implementan en una tarea posterior.
-    if matches!(
-        kind,
-        EnemyKind::Turret | EnemyKind::RustyRobot | EnemyKind::Leak
-    ) {
-        return;
-    }
-    if dist <= 1 {
+    // La gotera ni ataca ni se mueve; la torreta solo dispara en línea recta.
+    let shoots = match kind {
+        EnemyKind::Leak => return,
+        EnemyKind::Turret => {
+            if !(dist <= 1 || clear_line(&state.map, &state.entities, pos, player, 5)) {
+                return;
+            }
+            true
+        }
+        _ => dist <= 1,
+    };
+    if shoots {
         let slot = HIT_SLOTS[state.rng.random_range(0..HIT_SLOTS.len())];
         events.push(Event::PlayerHit);
         let prefix = format!("{} {}. ", capitalize(kind.name()), kind.bite());
@@ -75,8 +110,8 @@ fn act(state: &mut GameState, id: u32, events: &mut Vec<Event>) {
         return;
     }
     let chase = match kind {
-        EnemyKind::Turret | EnemyKind::RustyRobot | EnemyKind::Leak => false,
-        EnemyKind::RustMite => dist <= 8,
+        EnemyKind::Turret | EnemyKind::Leak => false,
+        EnemyKind::RustMite | EnemyKind::RustyRobot => dist <= 8,
         EnemyKind::Drone => awake,
     };
     let dest = if chase {
