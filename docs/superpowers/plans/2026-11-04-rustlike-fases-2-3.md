@@ -296,7 +296,7 @@ Decisiones:
   - cada enemigo lleva una barra fina de integridad encima si está dañado.
 - **`<Robot>`:** cada pieza es una forma separada (piernas abajo, cuerpo y núcleo en el centro, brazos a los lados y sensores arriba). El color sale del estado de la pieza mediante variables CSS: `--pieza-optimal: #9aa3ad`, `--pieza-light: #c89a6a`, `--pieza-severe: #c8642a`, `--pieza-critical: #8a4a24` y `--pieza-blocked: #5a3a24`.
 - **`<Hud>`:**
-  - cuatro filas de pieza, con el nombre en español, una barra de 0 a 100 y la etiqueta del estado («Óptimo», «Leve», «Grave», «Crítico», «Bloqueada»);
+  - cuatro filas de pieza, con el nombre en español, una barra de 0 a 100 y la etiqueta del estado («Óptimo», «Leve», «Grave», «Crítico», «Bloqueado»);
   - tres espacios de objeto con su nombre («Lata de aceite») y el botón «Usar»;
   - el botón «Recoger», visible solo si `allowedActions` incluye `pick`.
 - **Usar la lata:** al pulsar «Usar», o la tecla 1, 2 o 3, aparece un selector con cuatro botones (Piernas, Brazos, Sensores, Núcleo) y «Cancelar». Al elegir una pieza se envía `{type:'use', slot, target}`. Esc o «Cancelar» lo cierran. Mientras está abierto, las teclas de movimiento no hacen nada.

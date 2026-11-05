@@ -112,6 +112,7 @@ test('el botón Bajar solo aparece con descend permitido', async () => {
 
 test('ignora teclas mientras espera la respuesta', async () => {
   await abrir();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(false));
   let resolver;
   fetchFalso.mockImplementationOnce(() => new Promise((r) => { resolver = r; }));
   fireEvent.keyDown(window, { key: 'ArrowRight' });
@@ -136,13 +137,13 @@ test('las casillas unknown no se dibujan', async () => {
   expect(document.querySelectorAll('rect.casilla')).toHaveLength(5);
 });
 
-test('muestra las últimas 5 líneas del log', async () => {
-  fetchFalso.mockImplementationOnce(() => json(estado({ log: ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7'] }, {}), 201));
+test('muestra las últimas 8 líneas del log', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ log: ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10'] }, {}), 201));
   render(<Rustlike />);
   await screen.findByRole('img', { name: 'Piso 1' });
   expect(screen.queryByText('a2')).toBeNull();
   expect(screen.getByText('a3')).toBeTruthy();
-  expect(screen.getByText('a7')).toBeTruthy();
+  expect(screen.getByText('a10')).toBeTruthy();
 });
 
 test('borra la partida al salir', async () => {
@@ -243,10 +244,10 @@ test('muestra las cuatro piezas con su corrosión y estado', async () => {
   expect(screen.getByText('Lata de aceite')).toBeTruthy();
 });
 
-test('muestra Bloqueada para una pieza bloqueada', async () => {
+test('muestra Bloqueado para una pieza bloqueada', async () => {
   fetchFalso.mockImplementationOnce(() => json(estado({ parts: { ...estado().data.parts, legs: { name: 'basic', corrosion: 100, condition: 'blocked' } } }), 201));
   await abrir();
-  expect(screen.getByText('Piernas').closest('li').textContent).toContain('Bloqueada');
+  expect(screen.getByText('Piernas').closest('li').textContent).toContain('Bloqueado');
 });
 
 test('dibuja los charcos', async () => {
@@ -299,10 +300,43 @@ test('usar la lata pide la pieza y envía use con target', async () => {
   await abrir();
   fireEvent.keyDown(window, { key: '1' });
   fetchFalso.mockImplementationOnce(() => json(estado({ turn: 4 })));
-  fireEvent.click(screen.getByRole('button', { name: 'Piernas' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Brazos' }));
   await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
-  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'use', slot: 0, target: 'legs' });
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Piernas' })).toBeNull());
+  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'use', slot: 0, target: 'arms' });
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Brazos' })).toBeNull());
+});
+
+test('el selector deshabilita las piezas sin óxido', async () => {
+  await abrir();
+  fireEvent.keyDown(window, { key: '1' });
+  expect(screen.getByRole('button', { name: 'Piernas' }).disabled).toBe(true);
+  expect(screen.getByRole('button', { name: 'Brazos' }).disabled).toBe(false);
+  expect(screen.getByRole('button', { name: 'Cancelar' }).disabled).toBe(false);
+});
+
+test('las teclas 1-3 y Usar no abren el selector con una petición en curso', async () => {
+  await abrir();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(false));
+  let resolver;
+  fetchFalso.mockImplementationOnce(() => new Promise((r) => { resolver = () => r({ ok: true, status: 200, json: () => Promise.resolve(estado({ turn: 4 })) }); }));
+  fireEvent.keyDown(window, { key: '.' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  fireEvent.keyDown(window, { key: '1' });
+  expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull();
+  resolver();
+  await waitFor(() => expect(screen.getByText(/Turno/).textContent).toContain('4'));
+  fireEvent.keyDown(window, { key: '1' });
+  expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy();
+});
+
+test('las latas se dibujan antes que los enemigos (el enemigo queda encima)', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ entities: [
+    { id: 1, kind: 'rust_mite', x: 2, y: 0, elite: null, integrity: 15, maxIntegrity: 15 },
+    { id: 3, kind: 'oil_can', x: 2, y: 0 },
+  ] }), 201));
+  await abrir();
+  const orden = [...document.querySelectorAll('g[data-kind]')].map((g) => g.getAttribute('data-kind'));
+  expect(orden).toEqual(['oil_can', 'rust_mite']);
 });
 
 test('el botón Usar abre el selector y las teclas 2 y 3 sin objeto no hacen nada', async () => {
@@ -367,6 +401,7 @@ test('Usar, Recoger y Bajar quedan inactivos al perder', async () => {
 
 test('Usar se desactiva mientras hay una petición en curso', async () => {
   await abrir();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(false));
   let resolver;
   fetchFalso.mockImplementationOnce(() => new Promise((r) => { resolver = r; }));
   fireEvent.keyDown(window, { key: '.' });

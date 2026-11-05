@@ -33,7 +33,7 @@ const ZONAS = {
 const PIEZAS = [['legs', 'Piernas'], ['arms', 'Brazos'], ['sensors', 'Sensores'], ['core', 'Núcleo']];
 
 // Etiqueta en español del estado de una pieza.
-const ESTADOS = { optimal: 'Óptimo', light: 'Leve', severe: 'Grave', critical: 'Crítico', blocked: 'Bloqueada' };
+const ESTADOS = { optimal: 'Óptimo', light: 'Leve', severe: 'Grave', critical: 'Crítico', blocked: 'Bloqueado' };
 
 // Nombre en español de cada objeto.
 const OBJETOS = { oil_can: 'Lata de aceite' };
@@ -138,7 +138,8 @@ function Board({ juego, children }) {
           tipo === 'unknown' ? null : <Tile key={`${x},${y}`} x={x} y={y} tipo={tipo} niebla={!data.visible[y][x]} />,
         ),
       )}
-      {(data.entities ?? []).map((e) => {
+      {/* Los objetos van primero para que un enemigo encima de una lata se dibuje por delante. */}
+      {[...(data.entities ?? [])].sort((a, b) => (b.kind === 'oil_can') - (a.kind === 'oil_can')).map((e) => {
         const Dibujo = DIBUJO[e.kind];
         return Dibujo ? <Dibujo key={e.id} e={e} /> : null;
       })}
@@ -149,7 +150,7 @@ function Board({ juego, children }) {
   );
 }
 
-// Piso, zona, turno, puntaje, piezas, objetos y las últimas 5 líneas del registro.
+// Piso, zona, turno, puntaje, piezas, objetos y las últimas 8 líneas del registro.
 function Hud({ data, alUsar, alRecoger, inactivo }) {
   const puedeRecoger = data.allowedActions.includes('pick');
   return (
@@ -167,10 +168,10 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
           {PIEZAS.map(([id, nombre]) => {
             const pieza = data.parts[id];
             return (
-              <li key={id} className="pieza" data-condition={pieza.condition}>
-                <span className="pieza__nombre">{nombre}</span>
+              <li key={id} className="rustlike__pieza" data-condition={pieza.condition}>
+                <span className="rustlike__pieza-nombre">{nombre}</span>
                 <span
-                  className="pieza__barra"
+                  className="rustlike__pieza-barra"
                   role="progressbar"
                   aria-label={`Corrosión de ${nombre}`}
                   aria-valuemin={0}
@@ -179,7 +180,7 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
                 >
                   <span style={{ width: `${pieza.corrosion}%` }} />
                 </span>
-                <span className="pieza__estado">{ESTADOS[pieza.condition] ?? pieza.condition}</span>
+                <span className="rustlike__pieza-estado">{ESTADOS[pieza.condition] ?? pieza.condition}</span>
               </li>
             );
           })}
@@ -203,20 +204,20 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
         <button className="boton" disabled={inactivo} onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
       )}
       <ul className="rustlike__log" aria-label="Registro">
-        {data.log.slice(-5).map((linea, i) => <li key={i}>{linea}</li>)}
+        {data.log.slice(-8).map((linea, i) => <li key={i}>{linea}</li>)}
       </ul>
     </div>
   );
 }
 
 // Selector de la pieza a la que se aplica el objeto del espacio `slot`.
-function Selector({ slot, alElegir, alCancelar }) {
+function Selector({ slot, parts, alElegir, alCancelar }) {
   return (
     <div className="rustlike__capa rustlike__selector" role="dialog" aria-label="Elegir pieza">
       <p>¿A qué pieza?</p>
       <div className="rustlike__botones">
         {PIEZAS.map(([id, nombre]) => (
-          <button key={id} className="boton" onClick={(e) => { alElegir(slot, id); e.currentTarget.blur(); }}>{nombre}</button>
+          <button key={id} className="boton" disabled={(parts?.[id]?.corrosion ?? 0) === 0} onClick={(e) => { alElegir(slot, id); e.currentTarget.blur(); }}>{nombre}</button>
         ))}
         <button className="boton" onClick={(e) => { alCancelar(); e.currentTarget.blur(); }}>Cancelar</button>
       </div>
@@ -316,6 +317,7 @@ export default function Rustlike() {
         return;
       }
       if (k === '1' || k === '2' || k === '3') {
+        if (ocupado.current) return;
         const i = Number(k) - 1;
         if (juego?.data.items?.[i]) { e.preventDefault(); setSlot(i); }
         return;
@@ -363,7 +365,7 @@ export default function Rustlike() {
             <button className="boton boton--principal" onClick={(e) => { iniciar(); e.currentTarget.blur(); }}>Nueva partida</button>
           </div>
         )}
-        {slot !== null && juego.status !== 'lost' && <Selector slot={slot} alElegir={usar} alCancelar={() => setSlot(null)} />}
+        {slot !== null && juego.status !== 'lost' && <Selector slot={slot} parts={data.parts} alElegir={usar} alCancelar={() => setSlot(null)} />}
       </Board>
       <p className="rustlike__ayuda">
         Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter · Recoger: G · Objeto: 1 2 3

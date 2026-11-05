@@ -86,7 +86,7 @@ El robot tiene cuatro piezas, cada una con corrosión de **0 a 100**:
 | 25–49 | Leve | 10 % | 75 % | 6 |
 | 50–74 | Grave | 25 % | 50 % | 4 |
 | 75–99 | Crítico | 50 % | 25 % | 2 |
-| 100 | Bloqueada | 75 % | 0 % | 1 |
+| 100 | Bloqueado | 75 % | 0 % | 1 |
 
 Si las piernas se traban, el jugador **pierde el turno** y los enemigos actúan igualmente. Las piernas solo se traban al **desplazarse** a una casilla libre: atacar es trabajo de los brazos y no tira el dado de piernas.
 

@@ -1176,13 +1176,13 @@ a:focus-visible {
 .rustlike__capa .rustlike__botones { flex-wrap: wrap; justify-content: center; padding: 0 0.5rem; }
 
 .rustlike__piezas, .rustlike__objetos { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
-.pieza { display: grid; grid-template-columns: 6rem 8rem auto; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
-.pieza__barra { display: block; height: 0.5rem; background: #2a2623; border-radius: 0.25rem; overflow: hidden; }
-.pieza__barra span { display: block; height: 100%; background: var(--pieza-optimal); }
-.pieza[data-condition='light'] .pieza__barra span { background: var(--pieza-light); }
-.pieza[data-condition='severe'] .pieza__barra span { background: var(--pieza-severe); }
-.pieza[data-condition='critical'] .pieza__barra span { background: var(--pieza-critical); }
-.pieza[data-condition='blocked'] .pieza__barra span { background: var(--pieza-blocked); }
+.rustlike__pieza { display: grid; grid-template-columns: 6rem 8rem auto; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+.rustlike__pieza-barra { display: block; height: 0.5rem; background: #2a2623; border-radius: 0.25rem; overflow: hidden; }
+.rustlike__pieza-barra span { display: block; height: 100%; background: var(--pieza-optimal); }
+.rustlike__pieza[data-condition='light'] .rustlike__pieza-barra span { background: var(--pieza-light); }
+.rustlike__pieza[data-condition='severe'] .rustlike__pieza-barra span { background: var(--pieza-severe); }
+.rustlike__pieza[data-condition='critical'] .rustlike__pieza-barra span { background: var(--pieza-critical); }
+.rustlike__pieza[data-condition='blocked'] .rustlike__pieza-barra span { background: var(--pieza-blocked); }
 .objeto-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .objeto-hud__vacio { color: var(--papel-tenue); }
 
