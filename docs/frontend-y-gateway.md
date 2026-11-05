@@ -16,8 +16,9 @@ Es la **puerta de entrada a los servicios**. Recibe las peticiones que le reenv�
 | `/ws/tetris` | `ws://tetris-service:8004/ws` | WebSocket |
 | `/ws/asteroids` | `ws://asteroids-service:8005/ws` | WebSocket |
 | `/api/blackjack/*` | `http://blackjack-service:8006/*` | HTTP |
+| `/api/rustlike/*` | `http://rustlike-service:8007/*` | HTTP |
 
-Los destinos se pueden cambiar con las variables de entorno `SUDOKU_URL`, `BUSCAMINAS_URL`, `SNAKE_URL`, `TETRIS_URL`, `ASTEROIDS_URL` y `BLACKJACK_URL`. Por defecto usan los nombres de servicio de Docker Compose, que la red interna resuelve a la dirección de cada contenedor.
+Los destinos se pueden cambiar con las variables de entorno `SUDOKU_URL`, `BUSCAMINAS_URL`, `SNAKE_URL`, `TETRIS_URL`, `ASTEROIDS_URL`, `BLACKJACK_URL` y `RUSTLIKE_URL`. Por defecto usan los nombres de servicio de Docker Compose, que la red interna resuelve a la dirección de cada contenedor.
 
 ### Tecnologías
 

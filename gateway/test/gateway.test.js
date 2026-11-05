@@ -119,3 +119,10 @@ test('buildRoutes: /api/blackjack apunta a blackjack-service:8006', () => {
   assert.deepEqual(ruta(buildRoutes({})), { prefix: '/api/blackjack', target: 'http://blackjack-service:8006', rewrite: '' });
   assert.equal(ruta(buildRoutes({ BLACKJACK_URL: 'http://localhost:9' })).target, 'http://localhost:9');
 });
+
+// Rust Like es REST: /api/rustlike/* llega al servicio sin el prefijo, y su destino se puede sobrescribir.
+test('buildRoutes: /api/rustlike apunta a rustlike-service:8007', () => {
+  const ruta = (r) => r.find((x) => x.prefix === '/api/rustlike');
+  assert.deepEqual(ruta(buildRoutes({})), { prefix: '/api/rustlike', target: 'http://rustlike-service:8007', rewrite: '' });
+  assert.equal(ruta(buildRoutes({ RUSTLIKE_URL: 'http://localhost:9' })).target, 'http://localhost:9');
+});

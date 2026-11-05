@@ -14,11 +14,13 @@ export function buildRoutes(env = process.env) {
     tetris: env.TETRIS_URL ?? 'http://tetris-service:8004',
     asteroids: env.ASTEROIDS_URL ?? 'http://asteroids-service:8005',
     blackjack: env.BLACKJACK_URL ?? 'http://blackjack-service:8006',
+    rustlike: env.RUSTLIKE_URL ?? 'http://rustlike-service:8007',
   };
   return [
     { prefix: '/api/sudoku', target: t.sudoku, rewrite: '' },
     { prefix: '/api/buscaminas', target: t.buscaminas, rewrite: '' },
     { prefix: '/api/blackjack', target: t.blackjack, rewrite: '' },
+    { prefix: '/api/rustlike', target: t.rustlike, rewrite: '' },
     { prefix: '/ws/snake', target: t.snake, rewrite: '/ws', ws: true },
     { prefix: '/ws/tetris', target: t.tetris, rewrite: '/ws', ws: true },
     { prefix: '/ws/asteroids', target: t.asteroids, rewrite: '/ws', ws: true },

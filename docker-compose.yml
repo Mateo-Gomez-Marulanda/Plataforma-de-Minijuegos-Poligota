@@ -12,7 +12,7 @@ services:
   gateway:
     build: ./gateway
     ports: ["3000:3000"]
-    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service, blackjack-service]
+    depends_on: [sudoku-service, buscaminas-service, snake-service, tetris-service, asteroids-service, blackjack-service, rustlike-service]
 
   sudoku-service:
     build: ./services/sudoku-python
@@ -37,6 +37,10 @@ services:
   blackjack-service:
     build: ./services/blackjack-kotlin
     expose: ["8006"]
+
+  rustlike-service:
+    build: ./services/rustlike-rust
+    expose: ["8007"]
 
 networks:
   default:

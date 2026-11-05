@@ -1,6 +1,6 @@
 # Plataforma de Minijuegos Políglota
 
-Sudoku (Python), Buscaminas (Java), Snake (Elixir), Tetris (C#), Asteroids (Go) y Blackjack (Kotlin), cada uno como servicio independiente detrás de un gateway Node.js, con un único frontend React.
+Sudoku (Python), Buscaminas (Java), Snake (Elixir), Tetris (C#), Asteroids (Go), Blackjack (Kotlin) y Rust Like (Rust), cada uno como servicio independiente detrás de un gateway Node.js, con un único frontend React.
 
 Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos.md)
 
@@ -27,7 +27,7 @@ La web queda en **http://localhost:5173**. Hay dos formas de levantarla.
 Requiere Node.js 22 o superior. Cada juego necesita su servicio y el gateway; levántalos con Docker y la web con Vite:
 
 ```sh
-docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service
+docker compose up -d --build --no-deps gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service rustlike-service
 cd frontend
 npm install
 npm run dev
@@ -37,10 +37,10 @@ Sin el backend la web también abre, pero Sudoku y Snake muestran "No se pudo co
 
 **Opción B: todo en Docker**
 
-Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake, Buscaminas, Tetris, Asteroids y Blackjack):
+Levanta la web, el gateway y los servicios que ya están implementados (Sudoku, Snake, Buscaminas, Tetris, Asteroids, Blackjack y Rust Like):
 
 ```sh
-docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service
+docker compose up --build --no-deps frontend gateway sudoku-service snake-service buscaminas-service tetris-service asteroids-service blackjack-service rustlike-service
 ```
 
 El gateway queda en http://localhost:3000.
@@ -64,7 +64,7 @@ docker compose down              # detener
 
 ## Estado
 
-Todo implementado: gateway, los seis servicios (Sudoku en Python, Buscaminas en Java, Snake en Elixir, Tetris en C#, Asteroids en Go y Blackjack en Kotlin) y el frontend con los seis juegos jugables, el inicio y los créditos.
+Todo implementado: gateway, los siete servicios (Sudoku en Python, Buscaminas en Java, Snake en Elixir, Tetris en C#, Asteroids en Go, Blackjack en Kotlin y Rust Like en Rust) y el frontend con los seis juegos jugables, el inicio y los créditos.
 
 ## Desarrollo local del Sudoku
 

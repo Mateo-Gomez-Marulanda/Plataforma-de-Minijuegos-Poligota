@@ -23,7 +23,9 @@ Este documento explica el recorrido completo de una jugada, desde el navegador h
                                                   │               │        │   Go · net/http               │
                                                   │               │  HTTP  ├───────────────────────────────┤
                                                   │               ├───────▶│ blackjack-service   :8006     │
-                                                  └───────────────┘        │   Kotlin · Ktor · Netty       │
+                                                  │               │  HTTP  ├───────────────────────────────┤
+                                                  │               ├───────▶│ rustlike-service    :8007     │
+                                                  └───────────────┘        │   Rust · Axum · Tokio         │
                                                                            └───────────────────────────────┘
 ```
 
@@ -43,12 +45,13 @@ Tres ideas sostienen todo el proyecto:
 | Tetris | C# 12 / .NET 8 | ASP.NET Core sobre Kestrel | WebSocket | Un bucle `async` por conexión |
 | Asteroids | Go 1.23 | `net/http` + coder/websocket | WebSocket | Una goroutine por partida |
 | Blackjack | Kotlin 2.4 (JDK 21) | Ktor sobre Netty | REST | `ConcurrentHashMap` en memoria |
+| Rust Like | Rust 1.99 | Axum 0.8 sobre Tokio | REST | `HashMap` tras un `Mutex` en memoria |
 | Gateway | JavaScript (Node 22) | Express 5 + http-proxy-middleware | HTTP y WS | No guarda estado |
 | Frontend | JavaScript (React 19) | Vite 8 + React Router 7 | HTTP y WS | Solo lo que dibuja |
 
 Ninguno usa motores de juego: las reglas están programadas a mano. Las librerías solo resuelven transporte, JSON y pruebas.
 
-## 3. Recorrido de una petición REST (Sudoku, Buscaminas y Blackjack)
+## 3. Recorrido de una petición REST (Sudoku, Buscaminas, Blackjack y Rust Like)
 
 Los juegos por turnos solo cambian cuando el jugador actúa. Ejemplo: poner un 5 en el Sudoku.
 
@@ -103,6 +106,7 @@ Cada servicio tiene dos capas, y la comparación entre lenguajes se hace sobre l
 | Tetris | `services/tetris-csharp/src/Tetris/Logic/` | Records inmutables, `with`, LINQ y funciones estáticas |
 | Asteroids | `services/asteroids-go/logic/` | Estructura mutable con métodos, constantes `iota` y física con pasos fijos |
 | Blackjack | `services/blackjack-kotlin/src/main/kotlin/.../logic/` | `sealed interface`, `data class` con `copy()` y `Result` en vez de excepciones |
+| Rust Like | `services/rustlike-rust/src/logic/` | Enums con `match` exhaustivo, `Result` en vez de excepciones y estado mutable con `&mut` |
 
 ## 6. Estado y concurrencia
 
@@ -114,8 +118,9 @@ Cada servicio tiene dos capas, y la comparación entre lenguajes se hace sobre l
 | Tetris | Variables locales de un bucle `async` | Un único bucle procesa en orden teclas y ticks; solo él escribe en el socket. |
 | Asteroids | Estructura que solo toca la goroutine de la partida | Un `select` recibe teclas por un channel y ticks de un `time.Ticker`; nadie más toca el estado. |
 | Blackjack | `ConcurrentHashMap` + estados inmutables | `computeIfPresent` aplica cada jugada de forma atómica por sesión. |
+| Rust Like | `Mutex<HashMap>` | Cada jugada se aplica con el candado tomado. |
 
-En los seis casos, si el servicio se reinicia las partidas se pierden. Es una decisión aceptada del proyecto.
+En los siete casos, si el servicio se reinicia las partidas se pierden. Es una decisión aceptada del proyecto.
 
 ## 7. Cómo se empaqueta cada servicio
 
@@ -129,6 +134,7 @@ Cada servicio tiene un `Dockerfile` que **compila dentro de Docker**, de modo qu
 | `tetris-service` | `mcr.microsoft.com/dotnet/sdk:8.0` | `dotnet/aspnet:8.0-alpine` | 160 MB |
 | `asteroids-service` | `golang:1.23-alpine` (binario estático) | `scratch` (vacía) | 8 MB |
 | `blackjack-service` | `gradle:9.8-jdk21` (jar ejecutable) | `eclipse-temurin:21-jre-alpine` | 342 MB |
+| `rustlike-service` | `rust:1.99-alpine` (binario estático con musl) | `scratch` (vacía) | 3,3 MB |
 | `gateway` | (ninguna: `npm ci`) | `node:22-alpine` | 252 MB |
 | `frontend` | (ninguna) | `node:22-alpine` con el servidor de desarrollo de Vite | 401 MB |
 
@@ -144,6 +150,7 @@ El de Snake es el más pequeño porque un *release* de Elixir lleva su propio ru
 | Tetris | xUnit + `WebApplicationFactory` | Lógica, mensajes JSON y WebSocket contra el servidor en memoria |
 | Asteroids | `testing` de Go (con `-race`) | Lógica, mensajes JSON, la sesión con reloj falso y WebSocket real |
 | Blackjack | kotlin.test + JUnit 5 + `testApplication` de Ktor | Lógica con zapatos amañados, contrato REST en memoria y concurrencia del almacén |
+| Rust Like | `cargo test` + `tower::ServiceExt` | Lógica y contrato REST sin abrir puertos |
 | Gateway | `node:test` + `ws` | Reescritura de rutas, CORS, errores y proxy de WebSocket |
 | Frontend | Vitest + Testing Library | Cada pantalla y juego, con `fetch` y `WebSocket` simulados |
 
@@ -158,4 +165,5 @@ El de Snake es el más pequeño porque un *release* de Elixir lleva su propio ru
 | [tetris-csharp.md](tetris-csharp.md) | Tetris con C#, ASP.NET Core y WebSockets |
 | [asteroids-go.md](asteroids-go.md) | Asteroids con Go, goroutines y WebSockets |
 | [blackjack-kotlin.md](blackjack-kotlin.md) | Blackjack con Kotlin, Ktor y una máquina de estados |
+| [rustlike-rust.md](rustlike-rust.md) | Rust Like con Rust, Axum y un `Mutex` |
 | [frontend-y-gateway.md](frontend-y-gateway.md) | React, Vite, el cliente de API y el gateway de Node |
