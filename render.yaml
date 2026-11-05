@@ -1,0 +1,95 @@
+# Blueprint de Render: despliega el gateway y los 6 servicios de juego como servicios Docker gratuitos.
+# El frontend NO va aquí: se despliega en Vercel (ver docs/despliegue.md).
+#
+# En el plan gratuito los servicios no pueden recibir tráfico por la red privada de Render,
+# así que el gateway llega a cada juego por su URL pública (https://<nombre>.onrender.com).
+# Si Render le asigna a algún servicio una URL distinta (porque el nombre ya estaba ocupado),
+# corrige la variable correspondiente del gateway en el panel de Render.
+services:
+  - type: web
+    name: minijuegos-gateway
+    runtime: docker
+    plan: free
+    dockerContext: ./gateway
+    dockerfilePath: ./gateway/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: SUDOKU_URL
+        value: https://minijuegos-sudoku.onrender.com
+      - key: BUSCAMINAS_URL
+        value: https://minijuegos-buscaminas.onrender.com
+      - key: SNAKE_URL
+        value: https://minijuegos-snake.onrender.com
+      - key: TETRIS_URL
+        value: https://minijuegos-tetris.onrender.com
+      - key: ASTEROIDS_URL
+        value: https://minijuegos-asteroids.onrender.com
+      - key: BLACKJACK_URL
+        value: https://minijuegos-blackjack.onrender.com
+
+  - type: web
+    name: minijuegos-sudoku
+    runtime: docker
+    plan: free
+    dockerContext: ./services/sudoku-python
+    dockerfilePath: ./services/sudoku-python/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8001"
+
+  - type: web
+    name: minijuegos-buscaminas
+    runtime: docker
+    plan: free
+    dockerContext: ./services/buscaminas-java
+    dockerfilePath: ./services/buscaminas-java/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8002"
+
+  - type: web
+    name: minijuegos-snake
+    runtime: docker
+    plan: free
+    dockerContext: ./services/snake-elixir
+    dockerfilePath: ./services/snake-elixir/Dockerfile
+    envVars:
+      - key: PORT
+        value: "8003"
+
+  - type: web
+    name: minijuegos-tetris
+    runtime: docker
+    plan: free
+    dockerContext: ./services/tetris-csharp
+    dockerfilePath: ./services/tetris-csharp/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8004"
+
+  - type: web
+    name: minijuegos-asteroids
+    runtime: docker
+    plan: free
+    dockerContext: ./services/asteroids-go
+    dockerfilePath: ./services/asteroids-go/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8005"
+
+  - type: web
+    name: minijuegos-blackjack
+    runtime: docker
+    plan: free
+    dockerContext: ./services/blackjack-kotlin
+    dockerfilePath: ./services/blackjack-kotlin/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8006"

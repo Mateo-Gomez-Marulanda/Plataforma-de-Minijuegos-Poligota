@@ -17,6 +17,7 @@ Diseño completo: [docs/arquitectura-minijuegos.md](docs/arquitectura-minijuegos
 | [docs/asteroids-go.md](docs/asteroids-go.md) | Asteroids por dentro: Go, goroutines y WebSockets |
 | [docs/blackjack-kotlin.md](docs/blackjack-kotlin.md) | Blackjack por dentro: Kotlin, Ktor y la máquina de estados |
 | [docs/frontend-y-gateway.md](docs/frontend-y-gateway.md) | React, Vite y el gateway de Node |
+| [docs/despliegue.md](docs/despliegue.md) | Cómo publicar la web en Vercel y el backend en Render |
 
 ## Ejecución del programa
 

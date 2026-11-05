@@ -5,7 +5,7 @@
 // y el servidor de Vite las reenvía al gateway. Así la web funciona también para quien la abre desde otro equipo
 // (por ejemplo, con el reenvío de puertos de VS Code), donde "localhost" sería su propio ordenador.
 // Se puede forzar otra dirección con VITE_API_URL.
-export const API_URL = import.meta.env.VITE_API_URL ?? '';
+export const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 
 // Error de la API con el código del contrato (por ejemplo INVALID_MOVE) y un mensaje legible.
 export class ErrorApi extends Error {
