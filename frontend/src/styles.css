@@ -1177,12 +1177,12 @@ a:focus-visible {
 .objeto--lata rect { fill: #d9b13b; }
 .objeto--lata .objeto__tapa { fill: #8a6d1c; }
 .enemigo, .objeto { shape-rendering: geometricPrecision; }
-.enemigo--torreta rect { fill: #6b6f75; stroke: #2a2623; stroke-width: 0.6; }
+.enemigo--torreta > rect { fill: #6b6f75; stroke: #2a2623; stroke-width: 0.6; }
 .enemigo--torreta .enemigo__canon { fill: #2a2623; }
-.enemigo--oxidado rect { fill: #8a5a2b; stroke: #2a2623; stroke-width: 0.5; }
+.enemigo--oxidado > rect { fill: #8a5a2b; stroke: #2a2623; stroke-width: 0.5; }
 .enemigo--gotera path { fill: #4d9be0; stroke: #1f4f7a; stroke-width: 0.6; }
 .enemigo[data-detected='true'] { opacity: 0.5; }
-.enemigo[data-detected='true'] rect, .enemigo[data-detected='true'] polygon, .enemigo[data-detected='true'] circle, .enemigo[data-detected='true'] path { stroke: #e8e1d5; stroke-width: 0.8; stroke-dasharray: 2 1.5; }
+.enemigo[data-detected='true'] > rect, .enemigo[data-detected='true'] > polygon, .enemigo[data-detected='true'] > circle, .enemigo[data-detected='true'] > path { stroke: #e8e1d5; stroke-width: 0.8; stroke-dasharray: 2 1.5; }
 .objeto--pieza circle { fill: #8f8a82; stroke: #4a4f55; stroke-width: 1.2; }
 .objeto--pieza .objeto__centro { fill: #c9c3b8; stroke: none; }
 .objeto--pieza text { fill: #2a2623; font-family: sans-serif; font-weight: bold; }
@@ -1190,8 +1190,8 @@ a:focus-visible {
 .objeto--spray path { stroke: #5fb0a0; stroke-width: 0.8; fill: none; }
 .objeto--grasa rect { fill: #c9a24b; }
 .objeto--spray .objeto__tapa, .objeto--grasa .objeto__tapa { fill: #4a4f55; }
-.enemigo__barra-fondo { fill: #2a2623; }
-.enemigo__barra-valor { fill: #6bbf59; }
+.enemigo .enemigo__barra-fondo { fill: #2a2623; stroke: none; }
+.enemigo .enemigo__barra-valor { fill: #6bbf59; stroke: none; }
 
 .rustlike__tablero { position: relative; }
 .rustlike__capa {
@@ -1210,7 +1210,7 @@ a:focus-visible {
 .rustlike__capa .rustlike__botones { flex-wrap: wrap; justify-content: center; padding: 0 0.5rem; }
 
 .rustlike__piezas, .rustlike__objetos { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
-.rustlike__pieza { display: grid; grid-template-columns: 4.8rem minmax(0, 1fr) 4.6rem; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+.rustlike__pieza { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr) 4.6rem; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
 .rustlike__pieza-barra { display: block; height: 0.5rem; background: #2a2623; border-radius: 0.25rem; overflow: hidden; }
 .rustlike__pieza-barra span { display: block; height: 100%; background: var(--pieza-optimal); }
 .rustlike__pieza[data-condition='light'] .rustlike__pieza-barra span { background: var(--pieza-light); }

@@ -517,3 +517,14 @@ test('muestra grasa y salto cuando aplican', async () => {
   expect(screen.queryByText(/Grasa:/)).toBeNull();
   expect(screen.getByText('Salto: listo')).toBeTruthy();
 });
+
+test('la barra de integridad de una torreta y un robot oxidado usa las clases de la barra', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ entities: [
+    e1(1, 'turret', 0, 0, { integrity: 10 }), e1(2, 'rusty_robot', 1, 0, { integrity: 30, maxIntegrity: 60 }),
+  ] }), 201));
+  await abrir();
+  for (const k of ['turret', 'rusty_robot']) {
+    const g = document.querySelector(`g[data-kind="${k}"]`);
+    expect(g.querySelectorAll('.enemigo__barra > rect.enemigo__barra-fondo, .enemigo__barra > rect.enemigo__barra-valor')).toHaveLength(2);
+  }
+});
