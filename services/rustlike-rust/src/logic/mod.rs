@@ -170,6 +170,10 @@ fn use_item(
     let Some(part) = target else {
         return Err(InvalidMove("Indica qué pieza quieres aceitar.".to_string()));
     };
+    // Aceitar una pieza sin óxido gastaría la lata para nada.
+    if state.body.part(part).corrosion == 0 {
+        return Err(InvalidMove("Esa pieza no tiene óxido.".to_string()));
+    }
     let removed = repair(state.body.part_mut(part), 30);
     state.items[usize::from(slot)] = None;
     events.push(Event::ItemUsed);
@@ -997,6 +1001,15 @@ mod tests {
             err("Indica qué pieza quieres aceitar.")
         );
         assert_eq!(s.turn, 0);
+        // Una pieza sin óxido se rechaza sin gastar la lata, el turno ni el azar.
+        let mut twin = arena(7);
+        assert_eq!(
+            apply_action(&mut s, use_(0, Some(Slot::Legs))),
+            err("Esa pieza no tiene óxido.")
+        );
+        assert_eq!(s.items[0], Some(entities::ItemKind::OilCan));
+        assert_eq!(s.turn, 0);
+        assert_eq!(s.rng.random::<u64>(), twin.rng.random::<u64>());
         s.body.legs.corrosion = 50;
         let r = apply_action(&mut s, use_(0, Some(Slot::Legs))).unwrap();
         assert!(r.contains(&Event::ItemUsed));
