@@ -160,6 +160,8 @@ El robot tiene **3 espacios** de consumibles. No hay otro inventario.
 | Spray lubricante | −10 de corrosión en todas las piezas |
 | Grasa protectora | Inmunidad a toda corrosión durante 10 turnos |
 
+Cada piso genera entre **2 y 4 latas de aceite**, fuera de la sala inicial.
+
 ---
 
 ## 6. Combate

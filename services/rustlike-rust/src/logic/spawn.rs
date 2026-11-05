@@ -50,7 +50,7 @@ pub fn populate(floor: u8, level: &Level, rng: &mut StdRng, next_id: &mut u32) -
         }
     }
     let drones = rng.random_range(1..=2);
-    let cans = rng.random_range(1..=2);
+    let cans = rng.random_range(2..=4);
     for i in 0..drones + cans {
         let room = &level.rooms[rng.random_range(1..level.rooms.len())];
         let free = free_in(room, &taken);
@@ -126,7 +126,7 @@ mod tests {
             let es = populate(1, &level, &mut rng, &mut next);
             assert!((2..=3).contains(&count(&es, mite)), "seed {seed}");
             assert!((1..=2).contains(&count(&es, drone)));
-            assert!((1..=2).contains(&count(&es, |k| matches!(
+            assert!((2..=4).contains(&count(&es, |k| matches!(
                 k,
                 EntityKind::Item(ItemKind::OilCan)
             ))));
