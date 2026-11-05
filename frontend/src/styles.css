@@ -1176,7 +1176,20 @@ a:focus-visible {
 .enemigo--drone polygon { fill: #7aa6c2; stroke: #2a2623; stroke-width: 0.6; }
 .objeto--lata rect { fill: #d9b13b; }
 .objeto--lata .objeto__tapa { fill: #8a6d1c; }
-.enemigo, .objeto--lata { shape-rendering: geometricPrecision; }
+.enemigo, .objeto { shape-rendering: geometricPrecision; }
+.enemigo--torreta rect { fill: #6b6f75; stroke: #2a2623; stroke-width: 0.6; }
+.enemigo--torreta .enemigo__canon { fill: #2a2623; }
+.enemigo--oxidado rect { fill: #8a5a2b; stroke: #2a2623; stroke-width: 0.5; }
+.enemigo--gotera path { fill: #4d9be0; stroke: #1f4f7a; stroke-width: 0.6; }
+.enemigo[data-detected='true'] { opacity: 0.5; }
+.enemigo[data-detected='true'] rect, .enemigo[data-detected='true'] polygon, .enemigo[data-detected='true'] circle, .enemigo[data-detected='true'] path { stroke: #e8e1d5; stroke-width: 0.8; stroke-dasharray: 2 1.5; }
+.objeto--pieza circle { fill: #8f8a82; stroke: #4a4f55; stroke-width: 1.2; }
+.objeto--pieza .objeto__centro { fill: #c9c3b8; stroke: none; }
+.objeto--pieza text { fill: #2a2623; font-family: sans-serif; font-weight: bold; }
+.objeto--spray rect { fill: #5fb0a0; }
+.objeto--spray path { stroke: #5fb0a0; stroke-width: 0.8; fill: none; }
+.objeto--grasa rect { fill: #c9a24b; }
+.objeto--spray .objeto__tapa, .objeto--grasa .objeto__tapa { fill: #4a4f55; }
 .enemigo__barra-fondo { fill: #2a2623; }
 .enemigo__barra-valor { fill: #6bbf59; }
 
@@ -1207,4 +1220,5 @@ a:focus-visible {
 .objeto-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .objeto-hud__vacio { color: var(--papel-tenue); }
 
+.rustlike__efectos { margin: 0.5rem 0 0; padding: 0; list-style: none; font-size: 0.9rem; }
 .rustlike__ayuda { color: var(--papel-tenue); font-size: 0.85rem; }

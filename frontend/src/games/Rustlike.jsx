@@ -17,6 +17,7 @@ const TECLAS = {
   z: { type: 'move', dir: 'down_left' }, c: { type: 'move', dir: 'down_right' },
   ' ': { type: 'wait' }, '.': { type: 'wait' },
   Enter: { type: 'descend' }, '>': { type: 'descend' },
+  x: { type: 'swap' },
 };
 
 // Nombre en español de cada zona (docs/rustlike-rust.md §8.1).
@@ -36,7 +37,24 @@ const PIEZAS = [['legs', 'Piernas'], ['arms', 'Brazos'], ['sensors', 'Sensores']
 const ESTADOS = { optimal: 'Óptimo', light: 'Leve', severe: 'Grave', critical: 'Crítico', blocked: 'Bloqueado' };
 
 // Nombre en español de cada objeto.
-const OBJETOS = { oil_can: 'Lata de aceite' };
+const OBJETOS = { oil_can: 'Lata de aceite', lubricant_spray: 'Spray lubricante', protective_grease: 'Grasa protectora' };
+
+// Etiqueta de cada modelo de pieza por hueco (la misma tabla que `part_label` del servidor).
+const MODELOS = {
+  'legs:basic': 'Piernas básicas', 'arms:basic': 'Brazos básicos', 'sensors:basic': 'Sensores básicos', 'core:basic': 'Núcleo básico',
+  'legs:tracked': 'Piernas de oruga', 'legs:spring': 'Piernas de resorte',
+  'arms:drill': 'Brazos con taladro', 'arms:magnetic': 'Brazos magnéticos',
+  'sensors:long_range': 'Sensores de largo alcance', 'sensors:thermal': 'Sensores térmicos',
+};
+
+// Objetos del suelo que se dibujan antes que los enemigos.
+const SUELO = new Set(['oil_can', 'lubricant_spray', 'protective_grease', 'part']);
+
+// Objetos que se usan sin elegir pieza.
+const SIN_OBJETIVO = new Set(['lubricant_spray', 'protective_grease']);
+
+// Inicial del hueco en el engranaje de una pieza del suelo.
+const INICIAL = { legs: 'P', arms: 'B', sensors: 'S' };
 
 // Una casilla conocida; la clase depende del tipo y `niebla` indica que se vio pero ya no es visible.
 const Tile = memo(function Tile({ x, y, tipo, niebla }) {
@@ -72,7 +90,7 @@ function Robot({ x, y, parts }) {
 
 // Barra fina de integridad sobre un enemigo dañado.
 function BarraIntegridad({ x, y, e }) {
-  if (e.integrity >= e.maxIntegrity) return null;
+  if (e.integrity == null || e.integrity >= e.maxIntegrity) return null;
   const ancho = LADO - 4;
   return (
     <g className="enemigo__barra">
@@ -87,7 +105,7 @@ function Mite({ e }) {
   const cx = e.x * LADO + LADO / 2;
   const cy = e.y * LADO + LADO / 2 + 1;
   return (
-    <g className="enemigo enemigo--mite" data-kind="rust_mite" aria-hidden="true">
+    <g className="enemigo enemigo--mite" data-kind="rust_mite" data-detected={e.detected ? 'true' : undefined} aria-hidden="true">
       <path d={`M${cx - 5} ${cy - 3}L${cx - 2} ${cy - 1}M${cx - 5} ${cy + 3}L${cx - 2} ${cy + 1}M${cx + 5} ${cy - 3}L${cx + 2} ${cy - 1}M${cx + 5} ${cy + 3}L${cx + 2} ${cy + 1}`} />
       <circle cx={cx} cy={cy} r="3.2" />
       <BarraIntegridad x={e.x} y={e.y} e={e} />
@@ -100,7 +118,7 @@ function Drone({ e }) {
   const cx = e.x * LADO + LADO / 2;
   const cy = e.y * LADO + LADO / 2 + 1;
   return (
-    <g className="enemigo enemigo--drone" data-kind="drone" aria-hidden="true">
+    <g className="enemigo enemigo--drone" data-kind="drone" data-detected={e.detected ? 'true' : undefined} aria-hidden="true">
       <polygon points={`${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}`} />
       <BarraIntegridad x={e.x} y={e.y} e={e} />
     </g>
@@ -119,8 +137,89 @@ function OilCan({ e }) {
   );
 }
 
+// Torreta: un cuadrado con cañón.
+function Turret({ e }) {
+  const px = e.x * LADO;
+  const py = e.y * LADO;
+  return (
+    <g className="enemigo enemigo--torreta" data-kind="turret" data-detected={e.detected ? 'true' : undefined} aria-hidden="true">
+      <rect x={px + 3} y={py + 4} width={LADO - 6} height={LADO - 6} rx="1" />
+      <rect className="enemigo__canon" x={px + LADO / 2 - 1} y={py + 1} width="2" height="6" />
+      <BarraIntegridad x={e.x} y={e.y} e={e} />
+    </g>
+  );
+}
+
+// Robot oxidado: una versión tosca y marrón del robot.
+function RustyRobot({ e }) {
+  const px = e.x * LADO;
+  const py = e.y * LADO;
+  return (
+    <g className="enemigo enemigo--oxidado" data-kind="rusty_robot" data-detected={e.detected ? 'true' : undefined} aria-hidden="true">
+      <rect x={px + 4} y={py + 5} width={LADO - 8} height="7" />
+      <rect x={px + 5} y={py + 1.5} width={LADO - 10} height="3.5" />
+      <rect x={px + 1.5} y={py + 5} width="2.5" height="6" />
+      <rect x={px + LADO - 4} y={py + 5} width="2.5" height="6" />
+      <rect x={px + 4} y={py + 12} width={LADO - 8} height="3" />
+      <BarraIntegridad x={e.x} y={e.y} e={e} />
+    </g>
+  );
+}
+
+// Gotera: una gota azul que cae (indestructible, sin barra).
+function Leak({ e }) {
+  const cx = e.x * LADO + LADO / 2;
+  const cy = e.y * LADO + LADO / 2;
+  return (
+    <g className="enemigo enemigo--gotera" data-kind="leak" data-detected={e.detected ? 'true' : undefined} aria-hidden="true">
+      <path d={`M${cx} ${cy - 6}C${cx + 5} ${cy}, ${cx + 4} ${cy + 6}, ${cx} ${cy + 6}C${cx - 4} ${cy + 6}, ${cx - 5} ${cy}, ${cx} ${cy - 6}Z`} />
+    </g>
+  );
+}
+
+// Pieza en el suelo: un engranaje pequeño con la inicial del hueco.
+function FloorPart({ e }) {
+  const cx = e.x * LADO + LADO / 2;
+  const cy = e.y * LADO + LADO / 2;
+  return (
+    <g className="objeto objeto--pieza" data-kind="part" aria-hidden="true">
+      <circle cx={cx} cy={cy} r="5.5" strokeDasharray="2 1.2" />
+      <circle className="objeto__centro" cx={cx} cy={cy} r="4" />
+      <text x={cx} y={cy + 2.2} textAnchor="middle" fontSize="6">{INICIAL[e.slot] ?? '?'}</text>
+    </g>
+  );
+}
+
+// Spray lubricante: un bote con boquilla.
+function Spray({ e }) {
+  const px = e.x * LADO;
+  const py = e.y * LADO;
+  return (
+    <g className="objeto objeto--spray" data-kind="lubricant_spray" aria-hidden="true">
+      <rect x={px + 5} y={py + 6} width="5" height="8" rx="1" />
+      <rect className="objeto__tapa" x={px + 6} y={py + 3.5} width="3" height="2.5" />
+      <path d={`M${px + 10} ${py + 4}L${px + 13} ${py + 3}M${px + 10} ${py + 5}L${px + 13} ${py + 5.5}`} />
+    </g>
+  );
+}
+
+// Grasa protectora: una lata baja y ancha.
+function Grease({ e }) {
+  const px = e.x * LADO;
+  const py = e.y * LADO;
+  return (
+    <g className="objeto objeto--grasa" data-kind="protective_grease" aria-hidden="true">
+      <rect x={px + 3} y={py + 7} width="10" height="6" rx="1.5" />
+      <rect className="objeto__tapa" x={px + 3} y={py + 5.5} width="10" height="2" rx="1" />
+    </g>
+  );
+}
+
 // Elige el componente de cada entidad visible.
-const DIBUJO = { rust_mite: Mite, drone: Drone, oil_can: OilCan };
+const DIBUJO = {
+  rust_mite: Mite, drone: Drone, oil_can: OilCan, turret: Turret, rusty_robot: RustyRobot,
+  leak: Leak, part: FloorPart, lubricant_spray: Spray, protective_grease: Grease,
+};
 
 // El piso: un SVG con una casilla por cada posición conocida (las "unknown" no se dibujan) y el robot encima.
 function Board({ juego, children }) {
@@ -139,7 +238,7 @@ function Board({ juego, children }) {
         ),
       )}
       {/* Los objetos van primero para que un enemigo encima de una lata se dibuje por delante. */}
-      {[...(data.entities ?? [])].sort((a, b) => (b.kind === 'oil_can') - (a.kind === 'oil_can')).map((e) => {
+      {[...(data.entities ?? [])].sort((a, b) => SUELO.has(b.kind) - SUELO.has(a.kind)).map((e) => {
         const Dibujo = DIBUJO[e.kind];
         return Dibujo ? <Dibujo key={e.id} e={e} /> : null;
       })}
@@ -168,8 +267,11 @@ function Datos({ data }) {
 }
 
 // Panel a la derecha del mapa: piezas, objetos, botón Recoger y las últimas líneas del registro.
-function Hud({ data, alUsar, alRecoger, inactivo }) {
+function Hud({ data, alUsar, alRecoger, alCambiar, inactivo }) {
   const puedeRecoger = data.allowedActions.includes('pick');
+  const puedeCambiar = data.allowedActions.includes('swap');
+  const grasa = data.effects?.grease ?? 0;
+  const salto = data.effects?.jumpCooldown ?? null;
   return (
     <aside className="rustlike__hud" aria-label="Estado del robot">
       {data.parts && (
@@ -178,7 +280,7 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
             const pieza = data.parts[id];
             return (
               <li key={id} className="rustlike__pieza" data-condition={pieza.condition}>
-                <span className="rustlike__pieza-nombre">{nombre}</span>
+                <span className="rustlike__pieza-nombre">{MODELOS[`${id}:${pieza.name}`] ?? nombre}</span>
                 <span
                   className="rustlike__pieza-barra"
                   role="progressbar"
@@ -209,8 +311,17 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
           ))}
         </ul>
       )}
+      {(grasa > 0 || salto !== null) && (
+        <ul className="rustlike__efectos" aria-label="Efectos">
+          {grasa > 0 && <li>Grasa: {grasa} {grasa === 1 ? 'turno' : 'turnos'}</li>}
+          {salto !== null && <li>{salto === 0 ? 'Salto: listo' : `Salto: ${salto} ${salto === 1 ? 'turno' : 'turnos'}`}</li>}
+        </ul>
+      )}
       {puedeRecoger && (
         <button className="boton" disabled={inactivo} onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
+      )}
+      {puedeCambiar && (
+        <button className="boton" disabled={inactivo} onClick={(e) => { alCambiar(); e.currentTarget.blur(); }}>Cambiar pieza</button>
       )}
       <ul className="rustlike__log" aria-label="Registro">
         {data.log.slice(-LINEAS_REGISTRO).map((linea, i) => <li key={i}>{linea}</li>)}
@@ -304,6 +415,12 @@ export default function Rustlike() {
     enviar({ type: 'use', slot: i, target });
   }, [enviar]);
 
+  // Pulsar «Usar» o la tecla de un espacio: la lata pide pieza y el resto se usa directo.
+  const elegirObjeto = useCallback((i) => {
+    if (SIN_OBJETIVO.has(juego?.data.items?.[i])) enviar({ type: 'use', slot: i });
+    else setSlot(i);
+  }, [enviar, juego]);
+
   // Teclado: flechas/WASD, diagonales Q E Z C, espacio o punto para esperar, Enter o > para bajar, G recoge, 1-3 usan un objeto.
   useEffect(() => {
     const alPulsar = (e) => {
@@ -328,7 +445,11 @@ export default function Rustlike() {
       if (k === '1' || k === '2' || k === '3') {
         if (ocupado.current) return;
         const i = Number(k) - 1;
-        if (juego?.data.items?.[i]) { e.preventDefault(); setSlot(i); }
+        if (juego?.data.items?.[i]) { e.preventDefault(); elegirObjeto(i); }
+        return;
+      }
+      if (k === 'x') {
+        if (juego?.data.allowedActions.includes('swap')) { e.preventDefault(); enviar({ type: 'swap' }); }
         return;
       }
       const accion = TECLAS[e.key] ?? TECLAS[k];
@@ -338,7 +459,7 @@ export default function Rustlike() {
     };
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
-  }, [enviar, juego, slot]);
+  }, [enviar, juego, slot, elegirObjeto]);
 
   if (error && !juego) {
     return (
@@ -377,10 +498,10 @@ export default function Rustlike() {
         )}
         {slot !== null && juego.status !== 'lost' && <Selector slot={slot} parts={data.parts} alElegir={usar} alCancelar={() => setSlot(null)} />}
       </Board>
-      <Hud data={data} inactivo={inactivo} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
+      <Hud data={data} inactivo={inactivo} alUsar={elegirObjeto} alRecoger={() => enviar({ type: 'pick' })} alCambiar={() => enviar({ type: 'swap' })} />
       </div>
       <p className="rustlike__ayuda">
-        Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter · Recoger: G · Objeto: 1 2 3
+        Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter · Recoger: G · Cambiar pieza: X · Objeto: 1 2 3
       </p>
     </div>
   );

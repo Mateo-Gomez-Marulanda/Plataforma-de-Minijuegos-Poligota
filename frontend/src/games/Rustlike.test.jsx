@@ -249,18 +249,18 @@ async function conEstado(data) {
 test('muestra las cuatro piezas con su corrosión y estado', async () => {
   await abrir();
   const fila = (n) => screen.getByText(n).closest('li');
-  expect(fila('Piernas').textContent).toContain('Óptimo');
-  expect(fila('Brazos').textContent).toContain('Leve');
-  expect(fila('Sensores').textContent).toContain('Grave');
-  expect(fila('Núcleo').textContent).toContain('Crítico');
-  expect(fila('Núcleo').querySelector('[role="progressbar"]').getAttribute('aria-valuenow')).toBe('80');
+  expect(fila('Piernas básicas').textContent).toContain('Óptimo');
+  expect(fila('Brazos básicos').textContent).toContain('Leve');
+  expect(fila('Sensores básicos').textContent).toContain('Grave');
+  expect(fila('Núcleo básico').textContent).toContain('Crítico');
+  expect(fila('Núcleo básico').querySelector('[role="progressbar"]').getAttribute('aria-valuenow')).toBe('80');
   expect(screen.getByText('Lata de aceite')).toBeTruthy();
 });
 
 test('muestra Bloqueado para una pieza bloqueada', async () => {
   fetchFalso.mockImplementationOnce(() => json(estado({ parts: { ...estado().data.parts, legs: { name: 'basic', corrosion: 100, condition: 'blocked' } } }), 201));
   await abrir();
-  expect(screen.getByText('Piernas').closest('li').textContent).toContain('Bloqueado');
+  expect(screen.getByText('Piernas básicas').closest('li').textContent).toContain('Bloqueado');
 });
 
 test('dibuja los charcos', async () => {
@@ -421,4 +421,99 @@ test('Usar se desactiva mientras hay una petición en curso', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(true));
   resolver({ ok: true, status: 200, json: () => Promise.resolve(estado({ turn: 4 })) });
   await waitFor(() => expect(screen.getByRole('button', { name: 'Usar' }).disabled).toBe(false));
+});
+
+// Como conEstado, pero cuenta las jugadas ya enviadas.
+async function esperar(data) {
+  const antes = llamadas('POST', '/move').length;
+  fetchFalso.mockImplementationOnce(() => json(estado(data)));
+  fireEvent.keyDown(window, { key: '.' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(antes + 1));
+  await waitFor(() => expect(screen.getByText(/Turno/).textContent).toContain(String(data.turn ?? 3)));
+}
+
+const e1 = (id, kind, x, y, extra = {}) => ({ id, kind, x, y, elite: null, integrity: 25, maxIntegrity: 25, ...extra });
+
+test('dibuja torretas, robots oxidados, goteras, piezas y consumibles', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ entities: [
+    e1(1, 'turret', 0, 0), e1(2, 'rusty_robot', 1, 0, { integrity: 30, maxIntegrity: 60 }),
+    e1(3, 'leak', 2, 0, { integrity: null, maxIntegrity: null }),
+    { id: 4, kind: 'part', slot: 'arms', name: 'drill', corrosion: 20, x: 0, y: 1 },
+    { id: 5, kind: 'lubricant_spray', x: 1, y: 1 }, { id: 6, kind: 'protective_grease', x: 2, y: 1 },
+  ] }), 201));
+  await abrir();
+  for (const k of ['turret', 'rusty_robot', 'leak', 'part', 'lubricant_spray', 'protective_grease']) {
+    expect(document.querySelectorAll(`g[data-kind="${k}"]`)).toHaveLength(1);
+  }
+  expect(document.querySelector('g[data-kind="part"]').textContent).toBe('B');
+  // solo el robot dañado lleva barra; la gotera nunca
+  expect(document.querySelectorAll('.enemigo__barra')).toHaveLength(1);
+});
+
+test('los detectados se dibujan atenuados', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ entities: [
+    e1(1, 'turret', 0, 0, { detected: true }), e1(2, 'drone', 1, 0),
+  ] }), 201));
+  await abrir();
+  expect(document.querySelector('g[data-kind="turret"]').getAttribute('data-detected')).toBe('true');
+  expect(document.querySelector('g[data-kind="drone"]').hasAttribute('data-detected')).toBe(false);
+});
+
+test('el nombre de la pieza sigue el modelo', async () => {
+  const p = estado().data.parts;
+  fetchFalso.mockImplementationOnce(() => json(estado({ parts: {
+    legs: { ...p.legs, name: 'tracked' }, arms: { ...p.arms, name: 'magnetic' },
+    sensors: { ...p.sensors, name: 'thermal' }, core: p.core,
+  } }), 201));
+  await abrir();
+  for (const n of ['Piernas de oruga', 'Brazos magnéticos', 'Sensores térmicos', 'Núcleo básico']) expect(screen.getByText(n)).toBeTruthy();
+});
+
+test('X y el botón Cambiar pieza envían swap solo si está permitido', async () => {
+  await abrir();
+  expect(screen.queryByRole('button', { name: 'Cambiar pieza' })).toBeNull();
+  fireEvent.keyDown(window, { key: 'x' });
+  expect(llamadas('POST', '/move')).toHaveLength(0);
+  await esperar({ turn: 4, allowedActions: ['move', 'wait', 'swap'] });
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 5 })));
+  fireEvent.keyDown(window, { key: 'X' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(2));
+  expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'swap' });
+  await esperar({ turn: 6, allowedActions: ['move', 'wait', 'swap'] });
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 7 })));
+  const boton = screen.getByRole('button', { name: 'Cambiar pieza' });
+  fireEvent.click(boton);
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(4));
+  expect(cuerpoDe(llamadas('POST', '/move').at(-1)).action).toEqual({ type: 'swap' });
+  expect(document.activeElement).not.toBe(boton);
+});
+
+test('usar spray o grasa no abre el selector y envía use sin target', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ items: ['lubricant_spray', 'protective_grease', null] }), 201));
+  await abrir();
+  expect(screen.getByText('Spray lubricante')).toBeTruthy();
+  expect(screen.getByText('Grasa protectora')).toBeTruthy();
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 4, items: ['lubricant_spray', 'protective_grease', null] })));
+  fireEvent.keyDown(window, { key: '1' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'use', slot: 0 });
+  expect(screen.queryByRole('dialog', { name: 'Elegir pieza' })).toBeNull();
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Usar' })[1].disabled).toBe(false));
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 5 })));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Usar' })[1]);
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(2));
+  expect(cuerpoDe(llamadas('POST', '/move')[1]).action).toEqual({ type: 'use', slot: 1 });
+  expect(screen.queryByRole('dialog', { name: 'Elegir pieza' })).toBeNull();
+});
+
+test('muestra grasa y salto cuando aplican', async () => {
+  await abrir();
+  expect(screen.queryByText(/Grasa:/)).toBeNull();
+  expect(screen.queryByText(/Salto:/)).toBeNull();
+  await esperar({ turn: 4, effects: { grease: 7, jumpCooldown: 3 } });
+  expect(screen.getByText('Grasa: 7 turnos')).toBeTruthy();
+  expect(screen.getByText('Salto: 3 turnos')).toBeTruthy();
+  await esperar({ turn: 5, effects: { grease: 0, jumpCooldown: 0 } });
+  expect(screen.queryByText(/Grasa:/)).toBeNull();
+  expect(screen.getByText('Salto: listo')).toBeTruthy();
 });
