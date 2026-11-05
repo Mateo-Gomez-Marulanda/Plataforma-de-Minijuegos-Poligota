@@ -16,9 +16,17 @@ fn entities_json(s: &GameState) -> Vec<Value> {
         .iter()
         .filter(seen)
         .map(|e| match &e.kind {
+            EntityKind::Enemy(en) if en.kind.indestructible() => json!({
+                "id": e.id, "kind": en.kind.id(), "x": e.pos.x, "y": e.pos.y,
+                "elite": null, "integrity": null, "maxIntegrity": null,
+            }),
             EntityKind::Enemy(en) => json!({
                 "id": e.id, "kind": en.kind.id(), "x": e.pos.x, "y": e.pos.y,
                 "elite": null, "integrity": en.integrity, "maxIntegrity": en.max_integrity,
+            }),
+            EntityKind::Part { slot, part } => json!({
+                "id": e.id, "kind": "part", "slot": slot.id(), "name": part.model.id(),
+                "corrosion": part.corrosion, "x": e.pos.x, "y": e.pos.y,
             }),
             EntityKind::Item(k) => json!({"id": e.id, "kind": k.id(), "x": e.pos.x, "y": e.pos.y}),
         })

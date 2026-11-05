@@ -1,4 +1,5 @@
 // Enemigos, objetos y entidades del piso, con el escalado de estadísticas por piso.
+use super::corrosion::{Part, Slot};
 use super::map::Pos;
 
 /// Tipo de enemigo.
@@ -6,6 +7,9 @@ use super::map::Pos;
 pub enum EnemyKind {
     RustMite,
     Drone,
+    Turret,
+    RustyRobot,
+    Leak,
 }
 
 impl EnemyKind {
@@ -14,6 +18,9 @@ impl EnemyKind {
         match self {
             EnemyKind::RustMite => "rust_mite",
             EnemyKind::Drone => "drone",
+            EnemyKind::Turret => "turret",
+            EnemyKind::RustyRobot => "rusty_robot",
+            EnemyKind::Leak => "leak",
         }
     }
     /// Nombre con artículo para el registro.
@@ -21,13 +28,18 @@ impl EnemyKind {
         match self {
             EnemyKind::RustMite => "el ácaro de óxido",
             EnemyKind::Drone => "el dron de limpieza",
+            EnemyKind::Turret => "la torreta",
+            EnemyKind::RustyRobot => "el robot oxidado",
+            EnemyKind::Leak => "la gotera",
         }
     }
     /// Verbo del ataque para el registro.
     pub fn bite(self) -> &'static str {
         match self {
             EnemyKind::RustMite => "te muerde",
-            EnemyKind::Drone => "te golpea",
+            EnemyKind::Drone | EnemyKind::RustyRobot => "te golpea",
+            EnemyKind::Turret => "te dispara",
+            EnemyKind::Leak => "",
         }
     }
     /// Integridad base (piso 1).
@@ -35,11 +47,23 @@ impl EnemyKind {
         match self {
             EnemyKind::RustMite => 15,
             EnemyKind::Drone => 30,
+            EnemyKind::Turret => 25,
+            EnemyKind::RustyRobot => 60,
+            EnemyKind::Leak => 0,
         }
     }
     /// Golpe base (piso 1).
     pub fn base_hit(self) -> u32 {
-        6
+        match self {
+            EnemyKind::RustMite | EnemyKind::Drone => 6,
+            EnemyKind::Turret => 5,
+            EnemyKind::RustyRobot => 10,
+            EnemyKind::Leak => 0,
+        }
+    }
+    /// Si no se puede destruir (solo la gotera).
+    pub fn indestructible(self) -> bool {
+        self == EnemyKind::Leak
     }
 }
 
@@ -52,16 +76,26 @@ pub fn scaled(base: u32, floor: u8) -> u32 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemKind {
     OilCan,
+    LubricantSpray,
+    ProtectiveGrease,
 }
 
 impl ItemKind {
     /// Identificador estable para el contrato.
     pub fn id(self) -> &'static str {
-        "oil_can"
+        match self {
+            ItemKind::OilCan => "oil_can",
+            ItemKind::LubricantSpray => "lubricant_spray",
+            ItemKind::ProtectiveGrease => "protective_grease",
+        }
     }
     /// Nombre con artículo para el registro.
     pub fn name(self) -> &'static str {
-        "una lata de aceite"
+        match self {
+            ItemKind::OilCan => "una lata de aceite",
+            ItemKind::LubricantSpray => "un spray lubricante",
+            ItemKind::ProtectiveGrease => "una grasa protectora",
+        }
     }
 }
 
@@ -73,6 +107,8 @@ pub struct Enemy {
     pub max_integrity: u32,
     pub hit: u32,
     pub awake: bool,
+    /// El robot oxidado alterna turnos: true si descansa en el siguiente.
+    pub rested: bool,
 }
 
 impl Enemy {
@@ -85,6 +121,7 @@ impl Enemy {
             max_integrity: integrity,
             hit: scaled(kind.base_hit(), floor),
             awake: false,
+            rested: false,
         }
     }
 }
@@ -94,6 +131,11 @@ impl Enemy {
 pub enum EntityKind {
     Enemy(Enemy),
     Item(ItemKind),
+    /// Pieza del robot tirada en el suelo.
+    Part {
+        slot: Slot,
+        part: Part,
+    },
 }
 
 /// Entidad colocada en el piso.
@@ -125,5 +167,20 @@ mod tests {
         );
         let m = Enemy::new(EnemyKind::RustMite, 1);
         assert_eq!((m.integrity, m.hit), (15, 6));
+    }
+
+    #[test]
+    fn new_enemy_stats() {
+        let t = Enemy::new(EnemyKind::Turret, 1);
+        assert_eq!((t.integrity, t.hit), (25, 5));
+        let r = Enemy::new(EnemyKind::RustyRobot, 1);
+        assert_eq!((r.integrity, r.hit), (60, 10));
+        let r = Enemy::new(EnemyKind::RustyRobot, 21);
+        assert_eq!((r.integrity, r.hit), (72, 12));
+        let l = Enemy::new(EnemyKind::Leak, 1);
+        assert_eq!((l.integrity, l.hit), (0, 0));
+        assert!(EnemyKind::Leak.indestructible());
+        assert!(!EnemyKind::Turret.indestructible());
+        assert!(!l.rested);
     }
 }

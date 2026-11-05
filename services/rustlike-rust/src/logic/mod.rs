@@ -164,9 +164,15 @@ fn use_item(
     let Some(cell) = state.items.get(usize::from(slot)).copied() else {
         return Err(InvalidMove("Ese espacio no existe.".to_string()));
     };
-    let Some(entities::ItemKind::OilCan) = cell else {
+    let Some(item) = cell else {
         return Err(InvalidMove("Ese espacio está vacío.".to_string()));
     };
+    // Spray y grasa se implementan en una tarea posterior.
+    if item != entities::ItemKind::OilCan {
+        return Err(InvalidMove(
+            "Ese objeto todavía no se puede usar.".to_string(),
+        ));
+    }
     let Some(part) = target else {
         return Err(InvalidMove("Indica qué pieza quieres aceitar.".to_string()));
     };

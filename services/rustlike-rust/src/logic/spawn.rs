@@ -1,10 +1,41 @@
 // Aparición de enemigos y objetos al crear un piso.
+use super::corrosion::{trait_models, Part, PartModel, Slot, HIT_SLOTS};
 use super::entities::{Enemy, EnemyKind, Entity, EntityKind, ItemKind};
 use super::map::generator::Room;
 use super::map::{Level, Pos, Tile};
 use rand::rngs::StdRng;
 use rand::RngExt;
 use std::collections::HashSet;
+use std::ops::RangeInclusive;
+
+/// Pieza al azar para el suelo: hueco, corrosión y modelo según el piso.
+pub fn random_part(floor: u8, rng: &mut StdRng, corrosion: RangeInclusive<u8>) -> (Slot, Part) {
+    let slot = HIT_SLOTS[rng.random_range(0..HIT_SLOTS.len())];
+    let corrosion = rng.random_range(corrosion);
+    let model = if floor < 11 || rng.random_bool(0.5) {
+        PartModel::Basic
+    } else {
+        trait_models(slot)[rng.random_range(0..2)]
+    };
+    (slot, Part { model, corrosion })
+}
+
+/// Vecinas transitables (8 direcciones) de una casilla.
+fn walkable_neighbours(level: &Level, p: Pos) -> usize {
+    let mut n = 0;
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            let q = Pos {
+                x: p.x + dx,
+                y: p.y + dy,
+            };
+            if (dx, dy) != (0, 0) && level.map.is_walkable(q) {
+                n += 1;
+            }
+        }
+    }
+    n
+}
 
 /// Coloca ácaros en grupos, drones y latas en salas distintas de la inicial.
 pub fn populate(floor: u8, level: &Level, rng: &mut StdRng, next_id: &mut u32) -> Vec<Entity> {
@@ -63,6 +94,57 @@ pub fn populate(floor: u8, level: &Level, rng: &mut StdRng, next_id: &mut u32) -
             EntityKind::Enemy(Enemy::new(EnemyKind::Drone, floor))
         } else {
             EntityKind::Item(ItemKind::OilCan)
+        };
+        out.push(Entity {
+            id: *next_id,
+            pos,
+            kind,
+        });
+        *next_id += 1;
+    }
+    // Fase 4: goteras, torretas, robots oxidados, piezas, sprays y grasas (después de lo anterior).
+    let leaks = rng.random_range(1..=2);
+    let turrets = match floor {
+        0..=1 => 0,
+        2..=14 => rng.random_range(0..=1),
+        _ => rng.random_range(1..=2),
+    };
+    let robots = if floor >= 3 {
+        rng.random_range(0..=1)
+    } else {
+        0
+    };
+    let parts = rng.random_range(1..=2);
+    let sprays = rng.random_range(0..=1);
+    let greases = rng.random_range(0..=1);
+    let plan = std::iter::repeat_n(0u8, leaks)
+        .chain(std::iter::repeat_n(1, turrets))
+        .chain(std::iter::repeat_n(2, robots))
+        .chain(std::iter::repeat_n(3, parts))
+        .chain(std::iter::repeat_n(4, sprays))
+        .chain(std::iter::repeat_n(5, greases));
+    for what in plan {
+        let room = &level.rooms[rng.random_range(1..level.rooms.len())];
+        let mut free = free_in(room, &taken);
+        // Una gotera nunca tapa un pasillo: exige 3 vecinas transitables.
+        if what == 0 {
+            free.retain(|p| walkable_neighbours(level, *p) >= 3);
+        }
+        if free.is_empty() {
+            continue;
+        }
+        let pos = free[rng.random_range(0..free.len())];
+        taken.insert(pos);
+        let kind = match what {
+            0 => EntityKind::Enemy(Enemy::new(EnemyKind::Leak, floor)),
+            1 => EntityKind::Enemy(Enemy::new(EnemyKind::Turret, floor)),
+            2 => EntityKind::Enemy(Enemy::new(EnemyKind::RustyRobot, floor)),
+            3 => {
+                let (slot, part) = random_part(floor, rng, 10..=60);
+                EntityKind::Part { slot, part }
+            }
+            4 => EntityKind::Item(ItemKind::LubricantSpray),
+            _ => EntityKind::Item(ItemKind::ProtectiveGrease),
         };
         out.push(Entity {
             id: *next_id,
@@ -135,6 +217,108 @@ mod tests {
             let level = generate(60, &mut rng);
             let es = populate(60, &level, &mut rng, &mut next);
             assert!((8..=12).contains(&count(&es, mite)), "seed {seed}");
+        }
+    }
+
+    fn kind_count(es: &[Entity], k: EnemyKind) -> usize {
+        count(es, |x| matches!(x, EntityKind::Enemy(e) if e.kind == k))
+    }
+    fn item_count(es: &[Entity], k: ItemKind) -> usize {
+        count(es, |x| matches!(x, EntityKind::Item(i) if *i == k))
+    }
+
+    #[test]
+    fn random_part_before_11_is_basic() {
+        for seed in 0..200u64 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            let (slot, part) = random_part(5, &mut rng, 10..=60);
+            assert_eq!(part.model, PartModel::Basic);
+            assert!(HIT_SLOTS.contains(&slot));
+            assert!((10..=60).contains(&part.corrosion));
+        }
+    }
+
+    #[test]
+    fn random_part_from_11_mixes() {
+        let (mut basic, mut special) = (0, 0);
+        for seed in 0..200u64 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            let (slot, part) = random_part(11, &mut rng, 30..=70);
+            assert!(part.model.fits(slot));
+            assert!((30..=70).contains(&part.corrosion));
+            if part.model == PartModel::Basic {
+                basic += 1;
+            } else {
+                special += 1;
+            }
+        }
+        assert!(basic > 0 && special > 0);
+    }
+
+    #[test]
+    fn populate_phase4_counts() {
+        for floor in [1u8, 2, 3, 15] {
+            for seed in 0..100u64 {
+                let mut rng = StdRng::seed_from_u64(seed);
+                let level = generate(floor, &mut rng);
+                let mut next = 1;
+                let es = populate(floor, &level, &mut rng, &mut next);
+                let leaks = kind_count(&es, EnemyKind::Leak);
+                let turrets = kind_count(&es, EnemyKind::Turret);
+                let robots = kind_count(&es, EnemyKind::RustyRobot);
+                let parts = count(&es, |k| matches!(k, EntityKind::Part { .. }));
+                assert!((1..=2).contains(&leaks), "floor {floor} seed {seed}");
+                match floor {
+                    1 => assert_eq!(turrets, 0),
+                    2 => assert!(turrets <= 1),
+                    15 => assert!((1..=2).contains(&turrets)),
+                    _ => {}
+                }
+                if floor < 3 {
+                    assert_eq!(robots, 0);
+                } else {
+                    assert!(robots <= 1);
+                }
+                assert!((1..=2).contains(&parts), "floor {floor} seed {seed}");
+                assert!(item_count(&es, ItemKind::LubricantSpray) <= 1);
+                assert!(item_count(&es, ItemKind::ProtectiveGrease) <= 1);
+            }
+        }
+    }
+
+    #[test]
+    fn leak_never_blocks_path() {
+        use std::collections::VecDeque;
+        for seed in 0..100u64 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            let level = generate(5, &mut rng);
+            let mut next = 1;
+            let es = populate(5, &level, &mut rng, &mut next);
+            let leaks: HashSet<Pos> = es
+                .iter()
+                .filter(|e| matches!(&e.kind, EntityKind::Enemy(en) if en.kind == EnemyKind::Leak))
+                .map(|e| e.pos)
+                .collect();
+            let goal = level.stairs.unwrap();
+            let mut seen = HashSet::from([level.start]);
+            let mut q = VecDeque::from([level.start]);
+            while let Some(c) = q.pop_front() {
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let n = Pos {
+                            x: c.x + dx,
+                            y: c.y + dy,
+                        };
+                        if level.map.is_walkable(n) && !leaks.contains(&n) && seen.insert(n) {
+                            q.push_back(n);
+                        }
+                    }
+                }
+            }
+            assert!(
+                seen.contains(&goal),
+                "seed {seed}: gotera bloquea el camino"
+            );
         }
     }
 

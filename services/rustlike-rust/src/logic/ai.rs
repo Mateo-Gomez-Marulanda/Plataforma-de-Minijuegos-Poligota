@@ -60,6 +60,13 @@ fn act(state: &mut GameState, id: u32, events: &mut Vec<Event>) {
     }
     let (kind, awake, hit) = (enemy.kind, enemy.awake, enemy.hit);
     let dist = distance(pos, player);
+    // Las nuevas criaturas se implementan en una tarea posterior.
+    if matches!(
+        kind,
+        EnemyKind::Turret | EnemyKind::RustyRobot | EnemyKind::Leak
+    ) {
+        return;
+    }
     if dist <= 1 {
         let slot = HIT_SLOTS[state.rng.random_range(0..HIT_SLOTS.len())];
         events.push(Event::PlayerHit);
@@ -68,6 +75,7 @@ fn act(state: &mut GameState, id: u32, events: &mut Vec<Event>) {
         return;
     }
     let chase = match kind {
+        EnemyKind::Turret | EnemyKind::RustyRobot | EnemyKind::Leak => false,
         EnemyKind::RustMite => dist <= 8,
         EnemyKind::Drone => awake,
     };
