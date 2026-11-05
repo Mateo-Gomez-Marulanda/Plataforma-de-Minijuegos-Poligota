@@ -139,7 +139,7 @@ Los núcleos **solo los sueltan los jefes**, porque cambiar el núcleo equivale 
 - **Pieza bloqueada:** al llegar a 100 una pieza pierde su rasgo pero conserva su resistencia (largo alcance: radio 1; resorte: no salta; magnéticos: no atraen; térmicos: no detectan). La oruga es la excepción, porque protege físicamente: sigue ignorando los charcos aunque esté bloqueada.
 - **Cambiar** (`swap`): consume turno, se hace sobre una pieza del suelo y deja la propia (con su corrosión) en su lugar. No cambia `jump_cooldown`.
 - **Salto del resorte:** automático al moverse a una casilla libre si las piernas son de resorte sin bloquear y no hay recarga; salta 2 casillas si la segunda es transitable y sin enemigos. Solo cuenta el charco de la casilla de llegada. La recarga es de 10 y baja 1 por turno (incluido el del salto), así que se salta en los turnos 1, 11, 21…; si la segunda casilla no sirve, el paso es normal y no gasta la carga.
-- **Imán:** al final de cada turno, cada objeto o pieza a ≤ 3 casillas (Chebyshev) en una casilla visible avanza una casilla hacia el robot; solo lo frenan los muros.
+- **Imán:** al final de cada turno, cada objeto o pieza a ≤ 3 casillas (Chebyshev) en una casilla visible avanza una casilla hacia el robot; solo lo frenan los muros. El camino se busca con un límite de 3 pasos, así que un objeto tras una esquina puede no atraerse.
 - **Térmicos:** los enemigos a distancia euclídea ≤ radio de visión se envían aunque no se vean (con `"detected": true`).
 
 ### 4.2 Piezas raras (zonas profundas)
@@ -469,9 +469,8 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
 - `data.entities`: solo lo que está en casillas visibles. Enemigos: `{id, kind, x, y, elite, integrity, maxIntegrity}`; objetos: `{id, kind, x, y}`.
 - `data.entities` también incluye los enemigos que detectan los sensores térmicos aunque estén fuera de visión, marcados con `"detected": true` (solo cuando no son visibles); es la única excepción a la regla de abajo.
 - `data.effects`: `grease` son los turnos de grasa que quedan; `jumpCooldown` es la recarga del salto, o `null` si las piernas no son de resorte.
-- `data.allowedActions` incluye `"swap"` sobre una pieza.
 - `data.items`: los 3 espacios de objetos, con el id del objeto o `null`.
-- `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera, `"pick"` sobre un objeto con espacio libre, `"use"` si se lleva algún objeto).
+- `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera, `"pick"` sobre un objeto con espacio libre, `"swap"` sobre una pieza, `"use"` si se lleva algún objeto).
 - `data.events`: lo ocurrido en el turno, usado únicamente para animaciones.
 - `data.log`: últimas 20 entradas del registro de mensajes.
 - `data.score`: puntaje acumulado (sección 6.6).

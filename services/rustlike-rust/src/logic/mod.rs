@@ -130,6 +130,10 @@ fn walk(state: &mut GameState, dir: Dir, dest: map::Pos, events: &mut Vec<Event>
     // La oruga es una protección física: aun bloqueada, ignora los charcos.
     let tracked = state.body.legs.model == corrosion::PartModel::Tracked;
     if state.map.get(dest) == map::Tile::Puddle && !tracked {
+        // Con grasa activa el charco no se oxida ni deja rastro en el registro.
+        if state.grease_turns > 0 {
+            return;
+        }
         push_log(state, "Pisas un charco.".to_string());
         apply_corrosion(state, Slot::Legs, 3, events, "");
     }
@@ -204,15 +208,13 @@ fn pick(state: &mut GameState, events: &mut Vec<Event>) -> Result<(), InvalidMov
 
 /// Cambia la pieza del robot por la que hay en su casilla; la suya queda en el suelo.
 fn swap(state: &mut GameState, events: &mut Vec<Event>) -> Result<(), InvalidMove> {
-    let found = state
-        .entities
-        .iter()
-        .position(|e| e.pos == state.player && matches!(e.kind, entities::EntityKind::Part { .. }));
-    let Some(idx) = found else {
+    let player = state.player;
+    let found = state.entities.iter_mut().find_map(|e| match &mut e.kind {
+        entities::EntityKind::Part { slot, part } if e.pos == player => Some((slot, part)),
+        _ => None,
+    });
+    let Some((slot, part)) = found else {
         return Err(InvalidMove("No hay ninguna pieza aquí.".to_string()));
-    };
-    let entities::EntityKind::Part { slot, part } = &mut state.entities[idx].kind else {
-        return Ok(());
     };
     let slot = *slot;
     let mine = std::mem::replace(state.body.part_mut(slot), *part);
@@ -1519,6 +1521,9 @@ mod tests {
                 };
                 let ev = apply_action(&mut s, act).unwrap();
                 assert!(!ev.contains(&Event::PartDegraded), "turno {turn}");
+                if turn == 2 {
+                    assert!(!s.log.contains(&"Pisas un charco.".to_string()));
+                }
             }
             assert_eq!(s.body, snapshot, "turno {turn}");
             assert_eq!(s.turn, turn);
