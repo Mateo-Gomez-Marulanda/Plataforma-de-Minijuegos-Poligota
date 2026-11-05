@@ -10,6 +10,7 @@ pub mod pathfinding;
 pub mod score;
 pub mod spawn;
 pub mod state;
+pub mod traits;
 
 pub use action::{Action, Dir, Event, InvalidMove};
 pub use state::{GameState, Status};
@@ -47,6 +48,8 @@ pub fn new_game(seed: u64) -> GameState {
         entities,
         next_id,
         items: [None; 3],
+        jump_cooldown: 0,
+        grease_turns: 0,
         rng,
     };
     refresh_vision(&mut state);
@@ -77,12 +80,13 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
                 }
                 attack(state, idx, &mut events);
             } else {
-                walk(state, dest, &mut events);
+                walk(state, dir, dest, &mut events);
             }
         }
         Action::Wait => {}
         Action::Descend => return descend(state),
         Action::Pick => pick(state, &mut events)?,
+        Action::Swap => swap(state, &mut events)?,
         Action::Use { slot, target } => use_item(state, slot, target, &mut events)?,
     }
     state.turn += 1;
@@ -93,8 +97,9 @@ pub fn apply_action(state: &mut GameState, action: Action) -> Result<Vec<Event>,
     Ok(events)
 }
 
-/// Desplaza al robot a una casilla libre; las piernas pueden trabarse.
-fn walk(state: &mut GameState, dest: map::Pos, events: &mut Vec<Event>) {
+/// Desplaza al robot a una casilla libre; las piernas pueden trabarse y las de resorte
+/// cargadas saltan dos casillas.
+fn walk(state: &mut GameState, dir: Dir, dest: map::Pos, events: &mut Vec<Event>) {
     // La tirada solo ocurre si la jugada es válida y la probabilidad es positiva.
     let chance = state.body.legs.condition().legs_fail_chance();
     if chance > 0.0 && state.rng.random_bool(chance) {
@@ -105,9 +110,26 @@ fn walk(state: &mut GameState, dest: map::Pos, events: &mut Vec<Event>) {
         );
         return;
     }
+    let dest = match traits::try_jump(state, dir, dest) {
+        Some(landing) => {
+            state.jump_cooldown = traits::JUMP_COOLDOWN;
+            events.push(Event::PlayerMoved);
+            events.push(Event::PlayerJumped);
+            push_log(
+                state,
+                "Saltas dos casillas con las piernas de resorte.".to_string(),
+            );
+            landing
+        }
+        None => {
+            events.push(Event::PlayerMoved);
+            dest
+        }
+    };
     state.player = dest;
-    events.push(Event::PlayerMoved);
-    if state.map.get(dest) == map::Tile::Puddle {
+    // La oruga es una protección física: aun bloqueada, ignora los charcos.
+    let tracked = state.body.legs.model == corrosion::PartModel::Tracked;
+    if state.map.get(dest) == map::Tile::Puddle && !tracked {
         push_log(state, "Pisas un charco.".to_string());
         apply_corrosion(state, Slot::Legs, 3, events, "");
     }
@@ -180,7 +202,38 @@ fn pick(state: &mut GameState, events: &mut Vec<Event>) -> Result<(), InvalidMov
     Ok(())
 }
 
-/// Usa el objeto de un espacio; la lata de aceite repara 30 puntos de la pieza elegida.
+/// Cambia la pieza del robot por la que hay en su casilla; la suya queda en el suelo.
+fn swap(state: &mut GameState, events: &mut Vec<Event>) -> Result<(), InvalidMove> {
+    let found = state
+        .entities
+        .iter()
+        .position(|e| e.pos == state.player && matches!(e.kind, entities::EntityKind::Part { .. }));
+    let Some(idx) = found else {
+        return Err(InvalidMove("No hay ninguna pieza aquí.".to_string()));
+    };
+    let entities::EntityKind::Part { slot, part } = &mut state.entities[idx].kind else {
+        return Ok(());
+    };
+    let slot = *slot;
+    let mine = std::mem::replace(state.body.part_mut(slot), *part);
+    *part = mine;
+    let (old, new) = (
+        corrosion::part_label(slot, mine.model).to_lowercase(),
+        corrosion::part_label(slot, state.body.part(slot).model).to_lowercase(),
+    );
+    events.push(Event::PartSwapped);
+    push_log(
+        state,
+        format!(
+            "Cambias tus {old} ({}) por {new} ({}).",
+            mine.corrosion,
+            state.body.part(slot).corrosion
+        ),
+    );
+    Ok(())
+}
+
+/// Usa el objeto de un espacio: aceite (pieza elegida), spray (todas) o grasa.
 fn use_item(
     state: &mut GameState,
     slot: u8,
@@ -193,11 +246,37 @@ fn use_item(
     let Some(item) = cell else {
         return Err(InvalidMove("Ese espacio está vacío.".to_string()));
     };
-    // Spray y grasa se implementan en una tarea posterior.
-    if item != entities::ItemKind::OilCan {
-        return Err(InvalidMove(
-            "Ese objeto todavía no se puede usar.".to_string(),
-        ));
+    match item {
+        entities::ItemKind::OilCan => {}
+        entities::ItemKind::LubricantSpray => {
+            // Con todo limpio el spray se gastaría para nada.
+            if [Slot::Legs, Slot::Arms, Slot::Sensors, Slot::Core]
+                .iter()
+                .all(|s| state.body.part(*s).corrosion == 0)
+            {
+                return Err(InvalidMove("Ninguna pieza tiene óxido.".to_string()));
+            }
+            for slot_id in [Slot::Legs, Slot::Arms, Slot::Sensors, Slot::Core] {
+                repair(state.body.part_mut(slot_id), 10);
+            }
+            state.items[usize::from(slot)] = None;
+            events.push(Event::ItemUsed);
+            push_log(
+                state,
+                "Rocías el spray lubricante. Todas las piezas −10.".to_string(),
+            );
+            return Ok(());
+        }
+        entities::ItemKind::ProtectiveGrease => {
+            state.grease_turns = 10;
+            state.items[usize::from(slot)] = None;
+            events.push(Event::ItemUsed);
+            push_log(
+                state,
+                "Te untas grasa protectora: 10 turnos sin óxido.".to_string(),
+            );
+            return Ok(());
+        }
     }
     let Some(part) = target else {
         return Err(InvalidMove("Indica qué pieza quieres aceitar.".to_string()));
@@ -241,6 +320,8 @@ fn descend(state: &mut GameState) -> Result<Vec<Event>, InvalidMove> {
     state.turn += 1;
     push_log(state, format!("Bajas al piso {next}."));
     let mut events = vec![Event::FloorDescended];
+    // La visión del piso anterior no sirve para el imán de este turno.
+    refresh_vision(state);
     end_turn(state, &mut events);
     Ok(events)
 }
@@ -254,6 +335,16 @@ pub(crate) fn apply_corrosion(
     events: &mut Vec<Event>,
     prefix: &str,
 ) {
+    // Con grasa activa no se oxida nada; solo se anota si el golpe trae texto.
+    if state.grease_turns > 0 {
+        if !prefix.is_empty() {
+            push_log(
+                state,
+                format!("{prefix}La grasa protectora evita el óxido."),
+            );
+        }
+        return;
+    }
     let Some(hit) = corrode(&mut state.body, slot, base) else {
         if !prefix.is_empty() {
             push_log(state, prefix.trim_end().to_string());
@@ -313,6 +404,7 @@ fn end_turn(state: &mut GameState, events: &mut Vec<Event>) {
     if state.turn.is_multiple_of(6) {
         leaks_drip(state);
     }
+    traits::magnet_pull(state);
     let mut core_gain = 0;
     if state.turn.is_multiple_of(10) {
         core_gain += 1;
@@ -328,10 +420,17 @@ fn end_turn(state: &mut GameState, events: &mut Vec<Event>) {
             })
             .count() as u32;
     }
-    if core_gain > 0 && corrode(&mut state.body, Slot::Core, core_gain).is_some() {
+    if core_gain > 0
+        && state.grease_turns == 0
+        && corrode(&mut state.body, Slot::Core, core_gain).is_some()
+    {
         events.push(Event::PartDegraded);
     }
     check_core(state, events);
+    // La grasa baja después de las comprobaciones del turno: `use` la fija en 10 y
+    // protege ese turno y los 9 siguientes (10 en total); el turno 11 vuelve el óxido.
+    state.grease_turns = state.grease_turns.saturating_sub(1);
+    state.jump_cooldown = state.jump_cooldown.saturating_sub(1);
     refresh_vision(state);
 }
 
@@ -1249,5 +1348,385 @@ mod tests {
             .iter()
             .any(|e| matches!(e.kind, entities::EntityKind::Enemy(_))));
         assert!(s.entities.iter().all(|e| e.pos != s.player));
+    }
+
+    // --- Piezas con rasgo, cambio de pieza, spray y grasa ---
+
+    use corrosion::{Part, PartModel};
+    use entities::{EnemyKind, EntityKind, ItemKind};
+
+    fn add_part(s: &mut GameState, pos: Pos, slot: Slot, model: PartModel, corrosion: u8) {
+        let id = s.next_id;
+        s.next_id += 1;
+        s.entities.push(entities::Entity {
+            id,
+            pos,
+            kind: EntityKind::Part {
+                slot,
+                part: Part { model, corrosion },
+            },
+        });
+    }
+
+    fn set_legs(s: &mut GameState, model: PartModel, corrosion: u8) {
+        s.body.legs = Part { model, corrosion };
+    }
+
+    fn p(x: i32, y: i32) -> Pos {
+        Pos { x, y }
+    }
+
+    #[test]
+    fn swap_exchanges_parts() {
+        let mut s = arena(10);
+        s.body.legs.corrosion = 20;
+        s.jump_cooldown = 4;
+        let here = s.player;
+        add_part(&mut s, here, Slot::Legs, PartModel::Tracked, 55);
+        let ev = apply_action(&mut s, Action::Swap).unwrap();
+        assert!(ev.contains(&Event::PartSwapped));
+        assert_eq!(
+            s.body.legs,
+            Part {
+                model: PartModel::Tracked,
+                corrosion: 55
+            }
+        );
+        let left = s.entities.iter().find(|e| e.pos == s.player).unwrap();
+        assert_eq!(
+            left.kind,
+            EntityKind::Part {
+                slot: Slot::Legs,
+                part: Part {
+                    model: PartModel::Basic,
+                    corrosion: 20
+                }
+            }
+        );
+        assert_eq!(
+            s.log.last().unwrap(),
+            "Cambias tus piernas básicas (20) por piernas de oruga (55)."
+        );
+        assert_eq!((s.turn, s.jump_cooldown), (1, 3));
+    }
+
+    #[test]
+    fn swap_without_part_fails() {
+        let mut s = arena(10);
+        let mut twin = arena(10);
+        add_item(&mut s, 10, 10);
+        add_item(&mut twin, 10, 10);
+        assert_eq!(
+            apply_action(&mut s, Action::Swap),
+            Err(InvalidMove("No hay ninguna pieza aquí.".to_string()))
+        );
+        assert_eq!(s.turn, 0);
+        assert_eq!(s.rng.random::<u64>(), twin.rng.random::<u64>());
+    }
+
+    #[test]
+    fn pick_and_swap_coexist() {
+        let mut s = arena(10);
+        add_item(&mut s, 10, 10);
+        add_part(&mut s, p(10, 10), Slot::Arms, PartModel::Drill, 10);
+        let a = s.allowed_actions();
+        assert!(a.contains(&"pick") && a.contains(&"swap"));
+        apply_action(&mut s, Action::Swap).unwrap();
+        assert_eq!(s.body.arms.model, PartModel::Drill);
+        assert!(combat::item_at(&s.entities, s.player).is_some());
+        apply_action(&mut s, Action::Pick).unwrap();
+        assert_eq!(s.items[0], Some(ItemKind::OilCan));
+        assert_eq!(s.entities.len(), 1);
+    }
+
+    #[test]
+    fn spray_rules() {
+        let mut s = arena(11);
+        s.items[0] = Some(ItemKind::LubricantSpray);
+        let mut twin = arena(11);
+        assert_eq!(
+            apply_action(
+                &mut s,
+                Action::Use {
+                    slot: 0,
+                    target: None
+                }
+            ),
+            Err(InvalidMove("Ninguna pieza tiene óxido.".to_string()))
+        );
+        assert_eq!((s.turn, s.items[0]), (0, Some(ItemKind::LubricantSpray)));
+        assert_eq!(s.rng.random::<u64>(), twin.rng.random::<u64>());
+        s.body.legs.corrosion = 5;
+        s.body.arms.corrosion = 30;
+        s.body.core.corrosion = 50;
+        // El target se ignora.
+        let ev = apply_action(
+            &mut s,
+            Action::Use {
+                slot: 0,
+                target: Some(Slot::Legs),
+            },
+        )
+        .unwrap();
+        assert!(ev.contains(&Event::ItemUsed));
+        assert_eq!(
+            [
+                s.body.legs.corrosion,
+                s.body.arms.corrosion,
+                s.body.sensors.corrosion,
+                s.body.core.corrosion
+            ],
+            [0, 20, 0, 40]
+        );
+        assert_eq!(s.items[0], None);
+        assert!(s
+            .log
+            .contains(&"Rocías el spray lubricante. Todas las piezas −10.".to_string()));
+    }
+
+    #[test]
+    fn grease_blocks_all_corrosion_for_10_turns() {
+        // Regla: `use` fija 10; end_turn baja 1 DESPUÉS de las comprobaciones de
+        // corrosión del turno. Protegen el turno del uso y los 9 siguientes (10 en
+        // total); el turno 11 vuelve el óxido.
+        let mut s = arena(12);
+        s.body.arms.corrosion = 80; // crítico: activaría la propagación del turno 5/10
+        s.map.set(p(11, 10), Tile::Puddle);
+        add_enemy(&mut s, EnemyKind::RustMite, 9, 10);
+        s.items[0] = Some(ItemKind::ProtectiveGrease);
+        let snapshot = s.body.clone();
+        let ev = apply_action(
+            &mut s,
+            Action::Use {
+                slot: 0,
+                target: None,
+            },
+        )
+        .unwrap();
+        assert!(ev.contains(&Event::ItemUsed));
+        assert!(s
+            .log
+            .contains(&"Te untas grasa protectora: 10 turnos sin óxido.".to_string()));
+        assert!(s.log.contains(
+            &"El ácaro de óxido te muerde. La grasa protectora evita el óxido.".to_string()
+        ));
+        for turn in 1..=10 {
+            if turn > 1 {
+                let act = if turn == 2 {
+                    Action::Move { dir: Dir::Right }
+                } else {
+                    Action::Wait
+                };
+                let ev = apply_action(&mut s, act).unwrap();
+                assert!(!ev.contains(&Event::PartDegraded), "turno {turn}");
+            }
+            assert_eq!(s.body, snapshot, "turno {turn}");
+            assert_eq!(s.turn, turn);
+        }
+        assert_eq!(s.player, p(11, 10));
+        assert_eq!(s.grease_turns, 0);
+        let ev = apply_action(&mut s, Action::Wait).unwrap();
+        assert!(ev.contains(&Event::PartDegraded));
+        assert_ne!(s.body, snapshot);
+    }
+
+    #[test]
+    fn grease_resets_to_10() {
+        let mut s = arena(12);
+        s.items[0] = Some(ItemKind::ProtectiveGrease);
+        s.items[1] = Some(ItemKind::ProtectiveGrease);
+        let use_ = |slot| Action::Use { slot, target: None };
+        apply_action(&mut s, use_(0)).unwrap();
+        apply_action(&mut s, Action::Wait).unwrap();
+        assert_eq!(s.grease_turns, 8);
+        apply_action(&mut s, use_(1)).unwrap();
+        assert_eq!(s.grease_turns, 9);
+    }
+
+    #[test]
+    fn spring_jumps_when_charged() {
+        let mut s = arena(13);
+        set_legs(&mut s, PartModel::Spring, 0);
+        let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert_eq!(ev, vec![Event::PlayerMoved, Event::PlayerJumped]);
+        assert_eq!(s.player, p(12, 10));
+        assert!(s
+            .log
+            .contains(&"Saltas dos casillas con las piernas de resorte.".to_string()));
+        // 10 al saltar y baja 1 en el mismo turno.
+        assert_eq!(s.jump_cooldown, 9);
+    }
+
+    #[test]
+    fn spring_attacks_if_enemy_adjacent() {
+        let mut s = arena(13);
+        set_legs(&mut s, PartModel::Spring, 0);
+        add_enemy(&mut s, EnemyKind::Drone, 11, 10);
+        let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(ev.contains(&Event::EnemyHit) && !ev.contains(&Event::PlayerJumped));
+        assert_eq!((s.player, s.jump_cooldown), (p(10, 10), 0));
+    }
+
+    #[test]
+    fn spring_moves_one_if_second_tile_blocked() {
+        for blocker in ["wall", "enemy"] {
+            let mut s = arena(13);
+            set_legs(&mut s, PartModel::Spring, 0);
+            if blocker == "wall" {
+                s.map.set(p(12, 10), Tile::Wall);
+            } else {
+                add_enemy(&mut s, EnemyKind::Turret, 12, 10);
+            }
+            let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+            assert!(!ev.contains(&Event::PlayerJumped), "{blocker}");
+            assert_eq!(s.player, p(11, 10), "{blocker}");
+            assert_eq!(s.jump_cooldown, 0, "{blocker}");
+        }
+    }
+
+    #[test]
+    fn spring_jump_only_counts_landing_puddle() {
+        let mut s = arena(13);
+        set_legs(&mut s, PartModel::Spring, 0);
+        s.map.set(p(11, 10), Tile::Puddle);
+        let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(!ev.contains(&Event::PartDegraded));
+        assert_eq!(s.body.legs.corrosion, 0);
+        let mut t = arena(13);
+        set_legs(&mut t, PartModel::Spring, 0);
+        t.map.set(p(12, 10), Tile::Puddle);
+        let ev = apply_action(&mut t, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(ev.contains(&Event::PartDegraded));
+        // 3 × 1.5 de resistencia, redondeado.
+        assert_eq!(t.body.legs.corrosion, 5);
+    }
+
+    #[test]
+    fn spring_cooldown_10() {
+        let mut s = arena(14);
+        set_legs(&mut s, PartModel::Spring, 0);
+        apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert_eq!(s.player, p(12, 10));
+        for _ in 2..=9 {
+            apply_action(&mut s, Action::Wait).unwrap();
+        }
+        assert_eq!(s.jump_cooldown, 1);
+        // Turno 10: aún sin carga, se mueve una casilla.
+        apply_action(&mut s, Action::Move { dir: Dir::Left }).unwrap();
+        assert_eq!(s.player, p(11, 10));
+        assert_eq!(s.jump_cooldown, 0);
+        // Turno 11: salta de nuevo.
+        let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+        assert!(ev.contains(&Event::PlayerJumped));
+        assert_eq!(s.player, p(13, 10));
+    }
+
+    #[test]
+    fn blocked_spring_never_jumps() {
+        let mut s = arena(15);
+        set_legs(&mut s, PartModel::Spring, 100);
+        assert_eq!(traits::try_jump(&s, Dir::Right, p(11, 10)), None);
+        set_legs(&mut s, PartModel::Spring, 99);
+        assert_eq!(traits::try_jump(&s, Dir::Right, p(11, 10)), Some(p(12, 10)));
+        set_legs(&mut s, PartModel::Spring, 0);
+        s.jump_cooldown = 1;
+        assert_eq!(traits::try_jump(&s, Dir::Right, p(11, 10)), None);
+        for seed in 0..30 {
+            let mut s = arena(seed);
+            set_legs(&mut s, PartModel::Spring, 100);
+            let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+            assert!(!ev.contains(&Event::PlayerJumped));
+            assert!(s.player.x <= 11);
+        }
+    }
+
+    #[test]
+    fn tracked_ignore_puddles() {
+        for corrosion in [0, 100] {
+            let mut moved = 0;
+            for seed in 0..30 {
+                let mut s = arena(seed);
+                set_legs(&mut s, PartModel::Tracked, corrosion);
+                s.map.set(p(11, 10), Tile::Puddle);
+                let ev = apply_action(&mut s, Action::Move { dir: Dir::Right }).unwrap();
+                assert!(!ev.contains(&Event::PartDegraded));
+                assert_eq!(s.body.legs.corrosion, corrosion);
+                assert_eq!(s.body.core.corrosion, 0);
+                assert!(!s.log.contains(&"Pisas un charco.".to_string()));
+                moved += usize::from(s.player == p(11, 10));
+            }
+            assert!(moved > 0, "corrosión {corrosion}");
+        }
+    }
+
+    #[test]
+    fn magnetic_pulls_items_within_3() {
+        let mut s = arena(16);
+        s.body.arms = Part {
+            model: PartModel::Magnetic,
+            corrosion: 0,
+        };
+        add_item(&mut s, 13, 10);
+        add_item(&mut s, 14, 10);
+        add_part(&mut s, p(10, 7), Slot::Arms, PartModel::Drill, 20);
+        add_item(&mut s, 11, 11);
+        // Detrás de un muro: no es visible, no se atrae.
+        s.map.set(p(8, 10), Tile::Wall);
+        add_item(&mut s, 7, 10);
+        refresh_vision(&mut s);
+        apply_action(&mut s, Action::Wait).unwrap();
+        // Cada uno avanza una casilla (Chebyshev) hacia el robot; los lejanos y los
+        // ocultos tras el muro se quedan.
+        let dists: Vec<i32> = s.entities.iter().map(|e| cheb(e.pos, s.player)).collect();
+        assert_eq!(dists, vec![2, 4, 2, 0, 3]);
+        // Con los brazos bloqueados no atraen.
+        let mut b = arena(16);
+        b.body.arms = Part {
+            model: PartModel::Magnetic,
+            corrosion: 100,
+        };
+        add_item(&mut b, 13, 10);
+        apply_action(&mut b, Action::Wait).unwrap();
+        assert!(b.entities.iter().any(|e| e.pos == p(13, 10)));
+        let mut c = arena(16);
+        add_item(&mut c, 13, 10);
+        apply_action(&mut c, Action::Wait).unwrap();
+        assert!(c.entities.iter().any(|e| e.pos == p(13, 10)));
+    }
+
+    #[test]
+    fn thermal_detects_through_walls_only_enemies() {
+        let mut s = arena(17);
+        for y in 5..15 {
+            s.map.set(p(12, y), Tile::Wall);
+        }
+        let near = add_enemy(&mut s, EnemyKind::Turret, 14, 10);
+        let far = add_enemy(&mut s, EnemyKind::Turret, 20, 10);
+        add_item(&mut s, 14, 12);
+        refresh_vision(&mut s);
+        let get = |s: &GameState, id| s.entities.iter().find(|e| e.id == id).unwrap().clone();
+        assert!(!s.visible[10][14]);
+        assert!(!s.detected(&get(&s, near)));
+        s.body.sensors.model = PartModel::Thermal;
+        assert!(s.detected(&get(&s, near)));
+        assert!(!s.detected(&get(&s, far)), "fuera del radio de visión");
+        let item = s.entities.iter().find(|e| e.pos == p(14, 12)).unwrap();
+        assert!(!s.detected(item));
+        s.body.sensors.corrosion = 100;
+        assert!(!s.detected(&get(&s, near)));
+    }
+
+    #[test]
+    fn long_range_sees_further() {
+        let mut s = arena(18);
+        s.player = p(6, 10);
+        refresh_vision(&mut s);
+        assert!(!s.visible[10][15]);
+        s.body.sensors.model = PartModel::LongRange;
+        refresh_vision(&mut s);
+        assert!(s.visible[10][15]);
+        s.body.sensors.corrosion = 100;
+        refresh_vision(&mut s);
+        assert!(!s.visible[10][15] && !s.visible[10][8]);
     }
 }

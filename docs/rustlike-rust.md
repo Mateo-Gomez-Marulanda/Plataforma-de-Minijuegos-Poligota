@@ -133,6 +133,15 @@ Cada pieza tiene **resistencia** (multiplicador de la corrosión que recibe) y o
 
 Los núcleos **solo los sueltan los jefes**, porque cambiar el núcleo equivale a recuperar la vida.
 
+**Reglas fijadas en la implementación:**
+
+- **Aparición:** las piezas con rasgo salen desde el piso 11; en los pisos 1–10 solo hay piezas básicas usadas. Cada piso deja 1–2 piezas en el suelo (hueco al azar, corrosión 10–60) y el robot oxidado suelta una (corrosión 30–70).
+- **Pieza bloqueada:** al llegar a 100 una pieza pierde su rasgo pero conserva su resistencia (largo alcance: radio 1; resorte: no salta; magnéticos: no atraen; térmicos: no detectan). La oruga es la excepción, porque protege físicamente: sigue ignorando los charcos aunque esté bloqueada.
+- **Cambiar** (`swap`): consume turno, se hace sobre una pieza del suelo y deja la propia (con su corrosión) en su lugar. No cambia `jump_cooldown`.
+- **Salto del resorte:** automático al moverse a una casilla libre si las piernas son de resorte sin bloquear y no hay recarga; salta 2 casillas si la segunda es transitable y sin enemigos. Solo cuenta el charco de la casilla de llegada. La recarga es de 10 y baja 1 por turno (incluido el del salto), así que se salta en los turnos 1, 11, 21…; si la segunda casilla no sirve, el paso es normal y no gasta la carga.
+- **Imán:** al final de cada turno, cada objeto o pieza a ≤ 3 casillas (Chebyshev) en una casilla visible avanza una casilla hacia el robot; solo lo frenan los muros.
+- **Térmicos:** los enemigos a distancia euclídea ≤ radio de visión se envían aunque no se vean (con `"detected": true`).
+
 ### 4.2 Piezas raras (zonas profundas)
 
 Cambian la forma de jugar en lugar de solo mejorar números:
@@ -160,7 +169,11 @@ El robot tiene **3 espacios** de consumibles. No hay otro inventario.
 | Spray lubricante | −10 de corrosión en todas las piezas |
 | Grasa protectora | Inmunidad a toda corrosión durante 10 turnos |
 
-Cada piso genera entre **2 y 4 latas de aceite**, fuera de la sala inicial.
+Cada piso genera entre **2 y 4 latas de aceite**, fuera de la sala inicial, y 0–1 de spray y 0–1 de grasa.
+
+- **Spray:** −10 a las cuatro piezas; si todas están a 0 se rechaza («Ninguna pieza tiene óxido.») sin gastar turno ni objeto.
+- **Grasa:** `grease_turns` pasa a 10 (si ya estaba activa, se reinicia) y protege del golpe, el charco, la corrosión pasiva y la propagación. Baja 1 al final de cada turno consumido, después de las comprobaciones: protege el turno en que se usa y los 9 siguientes; en el 11.º vuelve el óxido.
+- Spray y grasa se usan sin `target`; si se envía, se ignora.
 
 ---
 
@@ -399,7 +412,7 @@ Se repiten en cada zona, con estadísticas y comportamientos más exigentes en c
 | Moverse / atacar | `{ "type": "move", "dir": "up" }` | 8 direcciones |
 | Esperar | `{ "type": "wait" }` | — |
 | Usar objeto | `{ "type": "use", "slot": 0, "target": "legs" }` | `target` solo para la lata de aceite |
-| Cambiar pieza | `{ "type": "swap" }` | Estar sobre una pieza |
+| Cambiar pieza | `{ "type": "swap" }` | Estar sobre una pieza; si no, `422` «No hay ninguna pieza aquí.» |
 | Recoger objeto | `{ "type": "pick" }` | Estar sobre un objeto y tener espacio |
 | Bajar | `{ "type": "descend" }` | Estar sobre una escalera o un hueco de ascensor |
 | Elegir mejora | `{ "type": "choose", "option": 1 }` | Solo en un taller |
@@ -437,7 +450,8 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
       "sensors": { "name": "basic", "corrosion": 61 },
       "core":    { "name": "basic", "corrosion": 35 }
     },
-    "items": ["oil_can", null, "grease"],
+    "effects": { "grease": 0, "jumpCooldown": null },
+    "items": ["oil_can", null, "protective_grease"],
     "allowedActions": ["move", "wait"],
     "events": ["player_hit", "part_degraded"],
     "log": ["El ácaro de óxido te muerde. Sensores +6."],
@@ -453,6 +467,9 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
 - `message`: `null` en las respuestas correctas.
 - `data.visible`: casillas dentro del campo de visión actual.
 - `data.entities`: solo lo que está en casillas visibles. Enemigos: `{id, kind, x, y, elite, integrity, maxIntegrity}`; objetos: `{id, kind, x, y}`.
+- `data.entities` también incluye los enemigos que detectan los sensores térmicos aunque estén fuera de visión, marcados con `"detected": true` (solo cuando no son visibles); es la única excepción a la regla de abajo.
+- `data.effects`: `grease` son los turnos de grasa que quedan; `jumpCooldown` es la recarga del salto, o `null` si las piernas no son de resorte.
+- `data.allowedActions` incluye `"swap"` sobre una pieza.
 - `data.items`: los 3 espacios de objetos, con el id del objeto o `null`.
 - `data.allowedActions`: acciones que se pueden intentar ahora (`"descend"` solo sobre la escalera, `"pick"` sobre un objeto con espacio libre, `"use"` si se lleva algún objeto).
 - `data.events`: lo ocurrido en el turno, usado únicamente para animaciones.
@@ -463,7 +480,7 @@ Una acción inválida devuelve `422` con `{ "error": "...", "message": "..." }`.
 
 ### 12.4 Eventos
 
-`player_moved`, `player_stuck`, `enemy_hit`, `enemy_destroyed`, `player_hit`, `part_degraded`, `part_blocked`, `part_swapped`, `item_used`, `item_picked`, `floor_descended`, `elevator_fall`, `boss_defeated`, `part_borrowed`, `parts_returned`, `game_over`, `victory`.
+`player_moved`, `player_jumped`, `player_stuck`, `enemy_hit`, `enemy_destroyed`, `player_hit`, `part_degraded`, `part_blocked`, `part_swapped`, `item_used`, `item_picked`, `floor_descended`, `elevator_fall`, `boss_defeated`, `part_borrowed`, `parts_returned`, `game_over`, `victory`.
 
 ---
 

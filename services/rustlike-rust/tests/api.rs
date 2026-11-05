@@ -319,3 +319,23 @@ async fn bad_use_bodies() {
         assert_eq!(r["error"], "INVALID_REQUEST");
     }
 }
+
+#[tokio::test]
+async fn effects_contract() {
+    let a = app();
+    let v = create(&a, 42).await;
+    let fx = &v["data"]["effects"];
+    assert_eq!(fx["grease"], 0);
+    assert!(fx["jumpCooldown"].is_null());
+}
+
+#[tokio::test]
+async fn swap_bad_body() {
+    let a = app();
+    let v = create(&a, 42).await;
+    let path = format!("/games/{}/move", v["id"].as_str().unwrap());
+    let (st, r) = post(&a, &path, r#"{"action":{"type":"swap"}}"#).await;
+    assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(r["error"], "INVALID_MOVE");
+    assert_eq!(r["message"], "No hay ninguna pieza aquí.");
+}

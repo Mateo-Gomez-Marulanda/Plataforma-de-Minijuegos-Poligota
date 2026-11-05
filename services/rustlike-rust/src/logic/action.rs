@@ -10,6 +10,7 @@ pub enum Action {
     Wait,
     Descend,
     Pick,
+    Swap,
     Use { slot: u8, target: Option<Slot> },
 }
 
@@ -47,6 +48,8 @@ impl Dir {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Event {
     PlayerMoved,
+    PlayerJumped,
+    PartSwapped,
     FloorDescended,
     PlayerStuck,
     PartDegraded,
@@ -64,6 +67,8 @@ impl Event {
     pub fn id(self) -> &'static str {
         match self {
             Event::PlayerMoved => "player_moved",
+            Event::PlayerJumped => "player_jumped",
+            Event::PartSwapped => "part_swapped",
             Event::FloorDescended => "floor_descended",
             Event::PlayerStuck => "player_stuck",
             Event::PartDegraded => "part_degraded",
