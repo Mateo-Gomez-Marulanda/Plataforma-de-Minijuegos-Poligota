@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Rustlike from './Rustlike.jsx';
+import { crearPartida } from '../api/rustlike.js';
 
 // Estado de 3x3 como lo devolvería el servicio: hay un muro, suelo, escalera y una casilla sin ver.
 const estado = (data = {}, extra = {}) => ({
@@ -162,4 +163,56 @@ test('con un botón enfocado las flechas siguen moviendo al robot', async () => 
   fireEvent.keyDown(boton, { key: 'ArrowRight' });
   await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
   expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'move', dir: 'right' });
+});
+
+test('tras hacer clic en «Nueva partida» el espacio espera y no reinicia la partida', async () => {
+  await abrir();
+  const boton = screen.getByRole('button', { name: 'Nueva partida' });
+  boton.focus();
+  fireEvent.click(boton);
+  await screen.findByRole('img', { name: 'Piso 1' });
+  expect(llamadas('POST', '/games')).toHaveLength(2);
+  expect(document.activeElement).not.toBe(boton);
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 4 })));
+  fireEvent.keyDown(document.activeElement, { key: ' ' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'wait' });
+  expect(llamadas('POST', '/games')).toHaveLength(2);
+});
+
+test('tras hacer clic en «Bajar» el botón pierde el foco', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ allowedActions: ['move', 'wait', 'descend'] }), 201));
+  await abrir();
+  const boton = screen.getByRole('button', { name: 'Bajar' });
+  boton.focus();
+  fireEvent.click(boton);
+  expect(document.activeElement).not.toBe(boton);
+});
+
+test('tras hacer clic en «Reintentar» el botón pierde el foco', async () => {
+  fetchFalso.mockImplementationOnce(() => Promise.reject(new Error('caído')));
+  render(<Rustlike />);
+  const boton = await screen.findByRole('button', { name: 'Reintentar' });
+  boton.focus();
+  fireEvent.click(boton);
+  expect(document.activeElement).not.toBe(boton);
+});
+
+test('crearPartida(42) envía la semilla dentro de options', async () => {
+  await crearPartida(42);
+  expect(cuerpoDe(llamadas('POST', '/games')[0])).toEqual({ options: { seed: 42 } });
+});
+
+test('muestra el nombre de la zona en español', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ zone: 'treatment_plant' }), 201));
+  await abrir();
+  expect(screen.getByText('Zona: Planta de tratamiento')).toBeTruthy();
+});
+
+test('si la partida ya no existe avisa y deja «Nueva partida»', async () => {
+  await abrir();
+  fetchFalso.mockImplementationOnce(() => json({ error: 'NOT_FOUND', message: 'no existe' }, 404));
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  expect((await screen.findByRole('alert')).textContent).toBe('La partida ya no existe en el servidor. Empieza una nueva.');
+  expect(screen.getByRole('button', { name: 'Nueva partida' })).toBeTruthy();
 });

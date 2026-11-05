@@ -149,3 +149,10 @@ test('el botón sin proveedor no rompe (queda desactivado)', () => {
   fireEvent.click(boton());
   expect(boton().textContent).toContain('Música: desactivada');
 });
+
+test('tras pulsar el botón con el ratón pierde el foco (espacio no lo reactiva)', () => {
+  render(<BotonMusica />);
+  boton().focus();
+  fireEvent.click(boton());
+  expect(document.activeElement).not.toBe(boton());
+});

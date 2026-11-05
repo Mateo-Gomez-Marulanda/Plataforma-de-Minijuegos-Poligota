@@ -1,6 +1,7 @@
 // Componente del juego Rust Like: dibuja el piso que envía el servicio (con niebla de guerra) y le manda las acciones.
 // El servidor lleva el mapa, la visión y las reglas; aquí solo se muestran las casillas y se leen las teclas.
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { ErrorApi } from '../api/cliente.js';
 import { borrarPartida, crearPartida, jugar } from '../api/rustlike.js';
 
 // Lado en píxeles de una casilla dentro del viewBox del SVG.
@@ -16,6 +17,16 @@ const TECLAS = {
   z: { type: 'move', dir: 'down_left' }, c: { type: 'move', dir: 'down_right' },
   ' ': { type: 'wait' }, '.': { type: 'wait' },
   Enter: { type: 'descend' }, '>': { type: 'descend' },
+};
+
+// Nombre en español de cada zona (docs/rustlike-rust.md §8.1).
+const ZONAS = {
+  warehouse: 'Almacén',
+  treatment_plant: 'Planta de tratamiento',
+  foundry: 'Fundición',
+  server_room: 'Sala de servidores',
+  vacuum_chambers: 'Cámaras de vacío',
+  core: 'El núcleo',
 };
 
 // Una casilla conocida; la clase depende del tipo y `niebla` indica que se vio pero ya no es visible.
@@ -70,7 +81,7 @@ function Hud({ data }) {
     <div className="rustlike__hud">
       <p className="rustlike__datos">
         <span>Piso {data.floor}</span>
-        <span>Zona: {data.zone === 'warehouse' ? 'Almacén' : data.zone}</span>
+        <span>Zona: {ZONAS[data.zone] ?? data.zone}</span>
         <span>Turno {data.turn}</span>
         <span>
           Puntaje <strong aria-label="Puntaje">{data.score}</strong>
@@ -132,7 +143,11 @@ export default function Rustlike() {
       setJuego(nuevo);
       setError(null);
     } catch (e) {
-      if (numero === peticiones.current) setError(e.message);
+      if (numero === peticiones.current) {
+        setError(e instanceof ErrorApi && e.codigo === 'NOT_FOUND'
+          ? 'La partida ya no existe en el servidor. Empieza una nueva.'
+          : e.message);
+      }
     } finally {
       if (numero === peticiones.current) ocupado.current = false;
     }
@@ -160,7 +175,7 @@ export default function Rustlike() {
     return (
       <div className="rustlike__aviso" role="alert">
         <p>{error}</p>
-        <button className="boton" onClick={iniciar}>Reintentar</button>
+        <button className="boton" onClick={(e) => { iniciar(); e.currentTarget.blur(); }}>Reintentar</button>
       </div>
     );
   }
@@ -174,9 +189,9 @@ export default function Rustlike() {
         <Hud data={data} />
         <div className="rustlike__botones">
           {data.allowedActions.includes('descend') && (
-            <button className="boton boton--principal" onClick={() => enviar({ type: 'descend' })}>Bajar</button>
+            <button className="boton boton--principal" onClick={(e) => { enviar({ type: 'descend' }); e.currentTarget.blur(); }}>Bajar</button>
           )}
-          <button className="boton" onClick={iniciar}>Nueva partida</button>
+          <button className="boton" onClick={(e) => { iniciar(); e.currentTarget.blur(); }}>Nueva partida</button>
         </div>
       </div>
       {error && <p className="sudoku__error" role="alert">{error}</p>}
