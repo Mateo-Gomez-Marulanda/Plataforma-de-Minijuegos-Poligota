@@ -197,7 +197,7 @@ impl Default for Body {
     }
 }
 
-/// Resultado de aplicar corrosión.
+/// Resultado de aplicar corrosión; `amount` es lo aplicado de verdad tras el tope de 100.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Corroded {
     pub slot: Slot,
@@ -219,10 +219,11 @@ pub fn corrode(body: &mut Body, slot: Slot, base: u32) -> Option<Corroded> {
         return None;
     }
     let new = (part.corrosion as u32 + amount).min(100) as u8;
+    let applied = new - part.corrosion;
     part.corrosion = new;
     Some(Corroded {
         slot: target,
-        amount: amount.min(100) as u8,
+        amount: applied,
         blocked_now: new == 100,
         transferred,
     })
@@ -294,7 +295,7 @@ mod tests {
         let r = corrode(&mut body, Slot::Legs, 15).unwrap();
         assert_eq!(body.legs.corrosion, 100);
         assert!(r.blocked_now && !r.transferred);
-        assert_eq!((r.slot, r.amount), (Slot::Legs, 15));
+        assert_eq!((r.slot, r.amount), (Slot::Legs, 10));
     }
 
     #[test]
