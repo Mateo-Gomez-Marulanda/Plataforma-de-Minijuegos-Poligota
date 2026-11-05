@@ -9,16 +9,17 @@ const MAX_ROOMS: usize = 12;
 const LAST_FLOOR: u8 = 255;
 
 /// Habitación rectangular (esquina superior izquierda y tamaño).
-struct Room {
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
+#[derive(Debug, Clone)]
+pub struct Room {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
 }
 
 impl Room {
     /// Centro de la habitación.
-    fn center(&self) -> Pos {
+    pub fn center(&self) -> Pos {
         Pos {
             x: self.x + self.w / 2,
             y: self.y + self.h / 2,
@@ -114,7 +115,12 @@ pub fn generate(floor: u8, rng: &mut StdRng) -> Level {
         map.set(pos, Tile::Stairs);
         Some(pos)
     };
-    Level { map, start, stairs }
+    Level {
+        map,
+        start,
+        stairs,
+        rooms,
+    }
 }
 
 #[cfg(test)]
@@ -205,6 +211,20 @@ mod tests {
             assert_eq!(level.map.get(level.start), Tile::Floor, "seed {seed}");
             assert_eq!(level.map.get(stairs), Tile::Stairs, "seed {seed}");
             assert!(reachable(&level.map, level.start, stairs), "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn level_exposes_rooms() {
+        for seed in 0..50 {
+            let level = generate(1, &mut rng(seed));
+            assert!(level.rooms.len() >= 2, "seed {seed}");
+            assert_eq!(level.start, level.rooms[0].center(), "seed {seed}");
+            assert_eq!(
+                level.stairs,
+                level.rooms.last().map(|r| r.center()),
+                "seed {seed}"
+            );
         }
     }
 

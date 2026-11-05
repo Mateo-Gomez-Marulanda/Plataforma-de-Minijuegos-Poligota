@@ -73,11 +73,13 @@ impl Map {
     }
 }
 
-/// Piso generado: mapa, punto de inicio y escalera (ausente en el último piso).
+/// Piso generado: mapa, punto de inicio, escalera (ausente en el último piso) y habitaciones.
+#[derive(Debug, Clone)]
 pub struct Level {
     pub map: Map,
     pub start: Pos,
     pub stairs: Option<Pos>,
+    pub rooms: Vec<generator::Room>,
 }
 
 #[cfg(test)]
