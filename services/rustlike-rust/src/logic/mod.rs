@@ -1024,7 +1024,7 @@ mod tests {
             assert!(HIT_SLOTS.iter().any(|sl| s.body.part(*sl).corrosion == 5));
         }
         // A 6 casillas, o fuera de las ocho líneas, no dispara.
-        for (x, y) in [(16, 10), (12, 11 + 2)] {
+        for (x, y) in [(16, 10), (12, 13)] {
             let mut s = arena(2);
             add_enemy(&mut s, Turret, x, y);
             let r = apply_action(&mut s, Action::Wait).unwrap();

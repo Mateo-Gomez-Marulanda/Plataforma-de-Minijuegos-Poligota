@@ -274,14 +274,18 @@ async fn parts_in_contract() {
 #[tokio::test]
 async fn entities_only_visible() {
     let a = app();
+    let mut total = 0;
     for seed in 0..30 {
         let v = create(&a, seed).await;
         let d = &v["data"];
         for e in d["entities"].as_array().unwrap() {
+            total += 1;
             let (x, y) = (e["x"].as_u64().unwrap(), e["y"].as_u64().unwrap());
             assert_eq!(d["visible"][y as usize][x as usize], true, "semilla {seed}");
         }
     }
+    // El bucle no debe ser vacío: alguna semilla muestra al menos una entidad.
+    assert!(total > 0);
 }
 
 #[tokio::test]
@@ -314,24 +318,4 @@ async fn bad_use_bodies() {
         assert_eq!(st, StatusCode::UNPROCESSABLE_ENTITY, "cuerpo {body:?}");
         assert_eq!(r["error"], "INVALID_REQUEST");
     }
-}
-
-#[tokio::test]
-async fn phase4_entities_contract() {
-    let a = app();
-    // Busca una partida con una gotera a la vista.
-    for seed in 0..200 {
-        let v = create(&a, seed).await;
-        let leak = v["data"]["entities"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|e| e["kind"] == "leak");
-        if let Some(e) = leak {
-            assert!(e["integrity"].is_null());
-            assert!(e["maxIntegrity"].is_null());
-            return;
-        }
-    }
-    // Sin gotera visible en ninguna semilla: la forma ya la cubre una prueba del presentador.
 }
