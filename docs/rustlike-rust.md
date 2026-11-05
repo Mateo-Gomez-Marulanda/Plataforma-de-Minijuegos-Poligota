@@ -478,7 +478,8 @@ Todo se dibuja con **componentes React, SVG y CSS**, sin imágenes ni recursos e
  │    ├── <Entity> ← enemigos, objetos y piezas
  │    ├── <Robot>  ← el jugador, cada pieza como forma separada
  │    └── <Fog>    ← niebla y efecto de apagón
- └── <Hud>        ← piezas, corrosión, objetos, piso y registro
+ └── <Hud>        ← panel a la derecha del mapa: piezas, corrosión, objetos, Recoger
+                    y las últimas 5 líneas del registro (piso, zona, turno y puntaje van arriba)
 ```
 
 ### 13.2 Lenguaje visual

@@ -150,19 +150,28 @@ function Board({ juego, children }) {
   );
 }
 
-// Piso, zona, turno, puntaje, piezas, objetos y las últimas 8 líneas del registro.
+// Cuántas líneas del registro se muestran, para no saturar al jugador.
+const LINEAS_REGISTRO = 5;
+
+// Datos generales de la partida: piso, zona, turno y puntaje.
+function Datos({ data }) {
+  return (
+    <p className="rustlike__datos">
+      <span>Piso {data.floor}</span>
+      <span>Zona: {ZONAS[data.zone] ?? data.zone}</span>
+      <span>Turno {data.turn}</span>
+      <span>
+        Puntaje <strong aria-label="Puntaje">{data.score}</strong>
+      </span>
+    </p>
+  );
+}
+
+// Panel a la derecha del mapa: piezas, objetos, botón Recoger y las últimas líneas del registro.
 function Hud({ data, alUsar, alRecoger, inactivo }) {
   const puedeRecoger = data.allowedActions.includes('pick');
   return (
-    <div className="rustlike__hud">
-      <p className="rustlike__datos">
-        <span>Piso {data.floor}</span>
-        <span>Zona: {ZONAS[data.zone] ?? data.zone}</span>
-        <span>Turno {data.turn}</span>
-        <span>
-          Puntaje <strong aria-label="Puntaje">{data.score}</strong>
-        </span>
-      </p>
+    <aside className="rustlike__hud" aria-label="Estado del robot">
       {data.parts && (
         <ul className="rustlike__piezas" aria-label="Piezas">
           {PIEZAS.map(([id, nombre]) => {
@@ -204,9 +213,9 @@ function Hud({ data, alUsar, alRecoger, inactivo }) {
         <button className="boton" disabled={inactivo} onClick={(e) => { alRecoger(); e.currentTarget.blur(); }}>Recoger</button>
       )}
       <ul className="rustlike__log" aria-label="Registro">
-        {data.log.slice(-8).map((linea, i) => <li key={i}>{linea}</li>)}
+        {data.log.slice(-LINEAS_REGISTRO).map((linea, i) => <li key={i}>{linea}</li>)}
       </ul>
-    </div>
+    </aside>
   );
 }
 
@@ -347,7 +356,7 @@ export default function Rustlike() {
   return (
     <div className="rustlike">
       <div className="rustlike__barra">
-        <Hud data={data} inactivo={inactivo} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
+        <Datos data={data} />
         <div className="rustlike__botones">
           {data.allowedActions.includes('descend') && (
             <button className="boton boton--principal" disabled={inactivo} onClick={(e) => { enviar({ type: 'descend' }); e.currentTarget.blur(); }}>Bajar</button>
@@ -356,6 +365,7 @@ export default function Rustlike() {
         </div>
       </div>
       {error && <p className="sudoku__error" role="alert">{error}</p>}
+      <div className="rustlike__juego">
       <Board juego={juego}>
         {juego.status === 'lost' && (
           <div className="rustlike__capa rustlike__fin" role="dialog" aria-label="Fin de la partida">
@@ -367,6 +377,8 @@ export default function Rustlike() {
         )}
         {slot !== null && juego.status !== 'lost' && <Selector slot={slot} parts={data.parts} alElegir={usar} alCancelar={() => setSlot(null)} />}
       </Board>
+      <Hud data={data} inactivo={inactivo} alUsar={setSlot} alRecoger={() => enviar({ type: 'pick' })} />
+      </div>
       <p className="rustlike__ayuda">
         Mover: flechas o WASD · Diagonales: Q E Z C · Esperar: espacio · Bajar: Enter · Recoger: G · Objeto: 1 2 3
       </p>

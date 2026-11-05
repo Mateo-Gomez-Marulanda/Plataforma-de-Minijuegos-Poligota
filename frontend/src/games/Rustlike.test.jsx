@@ -1,6 +1,6 @@
 // Pruebas del componente Rustlike con un servidor simulado (fetch falso): tablero, teclado, botón Bajar, errores y limpieza.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Rustlike from './Rustlike.jsx';
 import { crearPartida } from '../api/rustlike.js';
 
@@ -137,13 +137,26 @@ test('las casillas unknown no se dibujan', async () => {
   expect(document.querySelectorAll('rect.casilla')).toHaveLength(5);
 });
 
-test('muestra las últimas 8 líneas del log', async () => {
+test('muestra solo las últimas 5 líneas del log', async () => {
   fetchFalso.mockImplementationOnce(() => json(estado({ log: ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10'] }, {}), 201));
   render(<Rustlike />);
   await screen.findByRole('img', { name: 'Piso 1' });
-  expect(screen.queryByText('a2')).toBeNull();
-  expect(screen.getByText('a3')).toBeTruthy();
+  expect(screen.queryByText('a5')).toBeNull();
+  expect(screen.getByText('a6')).toBeTruthy();
   expect(screen.getByText('a10')).toBeTruthy();
+});
+
+test('piezas, objetos, Recoger y registro van en el panel lateral, junto al tablero', async () => {
+  fetchFalso.mockImplementationOnce(() => json(estado({ allowedActions: ['move', 'wait', 'pick'] }, {}), 201));
+  render(<Rustlike />);
+  const tablero = await screen.findByRole('img', { name: 'Piso 1' });
+  const panel = screen.getByRole('complementary', { name: 'Estado del robot' });
+  expect(within(panel).getByRole('list', { name: 'Piezas' })).toBeTruthy();
+  expect(within(panel).getByRole('list', { name: 'Objetos' })).toBeTruthy();
+  expect(within(panel).getByRole('button', { name: 'Recoger' })).toBeTruthy();
+  expect(within(panel).getByRole('list', { name: 'Registro' })).toBeTruthy();
+  // El panel y el tablero comparten contenedor: el panel queda a la derecha del mapa.
+  expect(panel.parentElement).toBe(tablero.closest('.rustlike__juego'));
 });
 
 test('borra la partida al salir', async () => {
