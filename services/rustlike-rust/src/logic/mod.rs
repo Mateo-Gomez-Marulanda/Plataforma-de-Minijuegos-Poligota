@@ -1,9 +1,12 @@
 // Lógica pura del juego, sin dependencias de red: partida nueva y aplicación de acciones.
 pub mod action;
 pub mod corrosion;
+pub mod entities;
 pub mod fov;
 pub mod map;
+pub mod pathfinding;
 pub mod score;
+pub mod spawn;
 pub mod state;
 
 pub use action::{Action, Dir, Event, InvalidMove};
@@ -120,8 +123,9 @@ fn apply_corrosion(state: &mut GameState, slot: Slot, base: u32, events: &mut Ve
     events.push(Event::PartDegraded);
     if hit.transferred {
         let text = format!(
-            "{} ya está bloqueada: el óxido pasa al núcleo. Núcleo +{}.",
+            "{} ya {}: el óxido pasa al núcleo. Núcleo +{}.",
             slot.name(),
+            blocked_word(slot).replace("bloquea", "están bloquea"),
             hit.amount
         );
         push_log(state, text);
@@ -129,15 +133,24 @@ fn apply_corrosion(state: &mut GameState, slot: Slot, base: u32, events: &mut Ve
         push_log(state, format!("{} +{}.", hit.slot.name(), hit.amount));
     }
     if hit.blocked_now && hit.slot != Slot::Core {
-        // Brazos concuerda en masculino; piernas y sensores, tal cual lo fija el diseño.
-        let text = match hit.slot {
-            Slot::Arms => format!("{} bloqueados por el óxido.", hit.slot.name()),
-            _ => format!("{} bloqueadas por el óxido.", hit.slot.name()),
-        };
+        let text = format!(
+            "{} {} por el óxido.",
+            hit.slot.name(),
+            blocked_word(hit.slot)
+        );
         events.push(Event::PartBlocked);
         push_log(state, text);
     }
     check_core(state, events);
+}
+
+/// Participio "bloqueadas"/"bloqueados" concordado con el nombre de la pieza.
+fn blocked_word(slot: Slot) -> &'static str {
+    if slot == Slot::Legs {
+        "bloqueadas"
+    } else {
+        "bloqueados"
+    }
 }
 
 /// Termina la partida si el núcleo se oxidó por completo.
@@ -524,6 +537,7 @@ mod tests {
         let mut s = new_game(24);
         s.body.part_mut(Slot::Sensors).corrosion = 75;
         apply_action(&mut s, Action::Wait).unwrap();
+        assert!(s.visible[s.player.y as usize][s.player.x as usize]);
         for (y, row) in s.visible.iter().enumerate() {
             for (x, v) in row.iter().enumerate() {
                 if *v {
@@ -586,16 +600,33 @@ mod tests {
         assert!(s.log.contains(&"Sensores +2.".to_string()));
         assert!(s
             .log
-            .contains(&"Sensores bloqueadas por el óxido.".to_string()));
+            .contains(&"Sensores bloqueados por el óxido.".to_string()));
         apply_corrosion(&mut s, Slot::Sensors, 5, &mut ev);
         assert_eq!(s.body.core.corrosion, 5);
         assert_eq!(
             s.log.last().unwrap(),
-            "Sensores ya está bloqueada: el óxido pasa al núcleo. Núcleo +5."
+            "Sensores ya están bloqueados: el óxido pasa al núcleo. Núcleo +5."
         );
         assert_eq!(
             ev,
             vec![Event::PartDegraded, Event::PartBlocked, Event::PartDegraded]
         );
+    }
+
+    #[test]
+    fn blocked_legs_use_feminine_and_arms_masculine() {
+        let mut s = new_game(28);
+        let mut ev = vec![];
+        s.body.part_mut(Slot::Legs).corrosion = 99;
+        apply_corrosion(&mut s, Slot::Legs, 1, &mut ev);
+        assert_eq!(s.log.last().unwrap(), "Piernas bloqueadas por el óxido.");
+        apply_corrosion(&mut s, Slot::Legs, 4, &mut ev);
+        assert_eq!(
+            s.log.last().unwrap(),
+            "Piernas ya están bloqueadas: el óxido pasa al núcleo. Núcleo +4."
+        );
+        s.body.part_mut(Slot::Arms).corrosion = 99;
+        apply_corrosion(&mut s, Slot::Arms, 1, &mut ev);
+        assert_eq!(s.log.last().unwrap(), "Brazos bloqueados por el óxido.");
     }
 }
