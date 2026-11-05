@@ -103,10 +103,16 @@ impl Condition {
     }
 }
 
-/// Modelo de pieza; la fase 4 añadirá más variantes.
+/// Modelo de pieza: la básica o una con rasgo propio de un hueco.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PartModel {
     Basic,
+    Tracked,
+    Spring,
+    Drill,
+    Magnetic,
+    LongRange,
+    Thermal,
 }
 
 impl PartModel {
@@ -114,21 +120,66 @@ impl PartModel {
     pub fn id(self) -> &'static str {
         match self {
             PartModel::Basic => "basic",
+            PartModel::Tracked => "tracked",
+            PartModel::Spring => "spring",
+            PartModel::Drill => "drill",
+            PartModel::Magnetic => "magnetic",
+            PartModel::LongRange => "long_range",
+            PartModel::Thermal => "thermal",
         }
     }
 
     /// Factor que multiplica la corrosión recibida.
     pub fn resistance(self) -> f64 {
         match self {
-            PartModel::Basic => 1.0,
+            PartModel::Basic | PartModel::Magnetic | PartModel::Thermal => 1.0,
+            PartModel::Tracked => 0.5,
+            PartModel::Spring => 1.5,
+            PartModel::Drill => 1.2,
+            PartModel::LongRange => 1.3,
+        }
+    }
+
+    /// Si el modelo se puede instalar en el hueco.
+    pub fn fits(self, slot: Slot) -> bool {
+        match self {
+            PartModel::Basic => true,
+            _ => trait_models(slot).contains(&self),
         }
     }
 
     /// Daño base de los brazos con este modelo.
     pub fn arms_base_damage(self) -> u32 {
         match self {
-            PartModel::Basic => 10,
+            PartModel::Drill => 15,
+            _ => 10,
         }
+    }
+}
+
+/// Modelos con rasgo que existen para un hueco.
+pub const fn trait_models(slot: Slot) -> &'static [PartModel] {
+    match slot {
+        Slot::Legs => &[PartModel::Tracked, PartModel::Spring],
+        Slot::Arms => &[PartModel::Drill, PartModel::Magnetic],
+        Slot::Sensors => &[PartModel::LongRange, PartModel::Thermal],
+        Slot::Core => &[],
+    }
+}
+
+/// Nombre visible en español de un modelo en un hueco.
+pub fn part_label(slot: Slot, model: PartModel) -> &'static str {
+    match (slot, model) {
+        (Slot::Legs, PartModel::Tracked) => "Piernas de oruga",
+        (Slot::Legs, PartModel::Spring) => "Piernas de resorte",
+        (Slot::Arms, PartModel::Drill) => "Brazos con taladro",
+        (Slot::Arms, PartModel::Magnetic) => "Brazos magnéticos",
+        (Slot::Sensors, PartModel::LongRange) => "Sensores de largo alcance",
+        (Slot::Sensors, PartModel::Thermal) => "Sensores térmicos",
+        (Slot::Legs, _) => "Piernas básicas",
+        (Slot::Arms, _) => "Brazos básicos",
+        (Slot::Sensors, _) => "Sensores básicos",
+        (Slot::Core, _) => "Núcleo básico",
     }
 }
 
@@ -143,6 +194,11 @@ impl Part {
     /// Estado actual de la pieza.
     pub fn condition(&self) -> Condition {
         Condition::from_corrosion(self.corrosion)
+    }
+
+    /// Si la pieza es de ese modelo y su rasgo sigue activo (no está bloqueada).
+    pub fn has_trait(&self, model: PartModel) -> bool {
+        self.model == model && self.condition() != Condition::Blocked
     }
 }
 
@@ -168,6 +224,16 @@ impl Body {
             sensors: fresh,
             core: fresh,
         }
+    }
+
+    /// Radio de visión: el del estado de los sensores, más 3 con largo alcance.
+    pub fn vision_radius(&self) -> i32 {
+        let bonus = if self.sensors.has_trait(PartModel::LongRange) {
+            3
+        } else {
+            0
+        };
+        self.sensors.condition().vision_radius() + bonus
     }
 
     /// Pieza de una ranura.
@@ -326,5 +392,112 @@ mod tests {
         };
         assert_eq!(repair(&mut part, 30), 10);
         assert_eq!(part.corrosion, 0);
+    }
+
+    #[test]
+    fn resistances_match_table() {
+        use PartModel::*;
+        let rows = [
+            (Basic, "basic", 1.0),
+            (Tracked, "tracked", 0.5),
+            (Spring, "spring", 1.5),
+            (Drill, "drill", 1.2),
+            (Magnetic, "magnetic", 1.0),
+            (LongRange, "long_range", 1.3),
+            (Thermal, "thermal", 1.0),
+        ];
+        for (m, id, r) in rows {
+            assert_eq!(m.id(), id);
+            assert_eq!(m.resistance(), r);
+        }
+    }
+
+    #[test]
+    fn fits_rules() {
+        use PartModel::*;
+        for s in [Slot::Legs, Slot::Arms, Slot::Sensors, Slot::Core] {
+            assert!(Basic.fits(s));
+        }
+        assert!(Tracked.fits(Slot::Legs) && Spring.fits(Slot::Legs));
+        assert!(Drill.fits(Slot::Arms) && Magnetic.fits(Slot::Arms));
+        assert!(LongRange.fits(Slot::Sensors) && Thermal.fits(Slot::Sensors));
+        assert!(!Tracked.fits(Slot::Arms) && !Drill.fits(Slot::Sensors));
+        assert!(!Thermal.fits(Slot::Legs));
+        for m in [Tracked, Spring, Drill, Magnetic, LongRange, Thermal] {
+            assert!(!m.fits(Slot::Core));
+        }
+    }
+
+    #[test]
+    fn drill_damage_15() {
+        assert_eq!(PartModel::Drill.arms_base_damage(), 15);
+        assert_eq!(PartModel::Magnetic.arms_base_damage(), 10);
+        assert_eq!(PartModel::Basic.arms_base_damage(), 10);
+    }
+
+    #[test]
+    fn trait_models_per_slot() {
+        use PartModel::*;
+        assert_eq!(trait_models(Slot::Legs), &[Tracked, Spring]);
+        assert_eq!(trait_models(Slot::Arms), &[Drill, Magnetic]);
+        assert_eq!(trait_models(Slot::Sensors), &[LongRange, Thermal]);
+        assert!(trait_models(Slot::Core).is_empty());
+    }
+
+    #[test]
+    fn labels() {
+        use PartModel::*;
+        assert_eq!(part_label(Slot::Legs, Basic), "Piernas básicas");
+        assert_eq!(part_label(Slot::Arms, Basic), "Brazos básicos");
+        assert_eq!(part_label(Slot::Sensors, Basic), "Sensores básicos");
+        assert_eq!(part_label(Slot::Core, Basic), "Núcleo básico");
+        assert_eq!(part_label(Slot::Legs, Tracked), "Piernas de oruga");
+        assert_eq!(part_label(Slot::Legs, Spring), "Piernas de resorte");
+        assert_eq!(part_label(Slot::Arms, Drill), "Brazos con taladro");
+        assert_eq!(part_label(Slot::Arms, Magnetic), "Brazos magnéticos");
+        assert_eq!(
+            part_label(Slot::Sensors, LongRange),
+            "Sensores de largo alcance"
+        );
+        assert_eq!(part_label(Slot::Sensors, Thermal), "Sensores térmicos");
+    }
+
+    #[test]
+    fn blocked_part_loses_trait() {
+        let mut p = Part {
+            model: PartModel::Spring,
+            corrosion: 99,
+        };
+        assert!(p.has_trait(PartModel::Spring));
+        assert!(!p.has_trait(PartModel::Tracked));
+        p.corrosion = 100;
+        assert!(!p.has_trait(PartModel::Spring));
+    }
+
+    #[test]
+    fn long_range_adds_3_unless_blocked() {
+        let mut body = Body::new();
+        body.sensors.model = PartModel::LongRange;
+        for (c, expected) in [(0, 11), (30, 9), (100, 1)] {
+            body.sensors.corrosion = c;
+            assert_eq!(body.vision_radius(), expected, "corrosion {c}");
+        }
+        body.sensors.model = PartModel::Basic;
+        body.sensors.corrosion = 0;
+        assert_eq!(body.vision_radius(), 8);
+    }
+
+    #[test]
+    fn tracked_halves_and_spring_increases() {
+        let mut body = Body::new();
+        body.legs.model = PartModel::Tracked;
+        corrode(&mut body, Slot::Legs, 6);
+        assert_eq!(body.legs.corrosion, 3);
+        body.legs = Part {
+            model: PartModel::Spring,
+            corrosion: 0,
+        };
+        corrode(&mut body, Slot::Legs, 6);
+        assert_eq!(body.legs.corrosion, 9);
     }
 }

@@ -302,11 +302,7 @@ fn end_turn(state: &mut GameState, events: &mut Vec<Event>) {
 
 /// Recalcula la visión actual y acumula lo visto en `seen`.
 fn refresh_vision(state: &mut GameState) {
-    state.visible = fov::compute(
-        &state.map,
-        state.player,
-        state.body.sensors.condition().vision_radius(),
-    );
+    state.visible = fov::compute(&state.map, state.player, state.body.vision_radius());
     for (seen_row, vis_row) in state.seen.iter_mut().zip(&state.visible) {
         for (s, v) in seen_row.iter_mut().zip(vis_row) {
             *s |= *v;
