@@ -153,3 +153,13 @@ test('Enter y espacio sobre un botón con foco no mueven al robot', async () => 
   expect(sinCancelar).toBe(true); // no se llamó a preventDefault
   expect(llamadas('POST', '/move')).toHaveLength(0);
 });
+
+test('con un botón enfocado las flechas siguen moviendo al robot', async () => {
+  await abrir();
+  const boton = screen.getByRole('button', { name: 'Nueva partida' });
+  boton.focus();
+  fetchFalso.mockImplementationOnce(() => json(estado({ turn: 4 })));
+  fireEvent.keyDown(boton, { key: 'ArrowRight' });
+  await waitFor(() => expect(llamadas('POST', '/move')).toHaveLength(1));
+  expect(cuerpoDe(llamadas('POST', '/move')[0]).action).toEqual({ type: 'move', dir: 'right' });
+});

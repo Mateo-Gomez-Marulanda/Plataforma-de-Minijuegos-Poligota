@@ -142,8 +142,11 @@ export default function Rustlike() {
   useEffect(() => {
     const alPulsar = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || typeof e.key !== 'string') return;
-      // Con foco en un control (botón, enlace, campo) la tecla es suya: Enter/espacio lo activan.
-      if (e.target instanceof Element && (e.target.isContentEditable || e.target.closest('button, a, input, textarea, select'))) return;
+      const destino = e.target instanceof Element ? e.target : null;
+      // En un campo de texto todas las teclas son suyas.
+      if (destino && (destino.isContentEditable || destino.closest('input, textarea, select'))) return;
+      // En un botón o enlace solo Enter y espacio son suyos (activarlo); el resto sigue jugando.
+      if (destino && destino.closest('button, a') && (e.key === 'Enter' || e.key === ' ')) return;
       const accion = TECLAS[e.key] ?? TECLAS[e.key.toLowerCase()];
       if (!accion) return;
       e.preventDefault();
