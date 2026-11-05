@@ -256,3 +256,17 @@ async fn delete_is_idempotent() {
     assert_eq!(delete(&a, &path).await.0, StatusCode::NO_CONTENT);
     assert_eq!(get(&a, &path).await.0, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn parts_in_contract() {
+    let a = app();
+    let v = create(&a, 42).await;
+    let parts = &v["data"]["parts"];
+    assert_eq!(
+        parts["legs"],
+        json!({"name": "basic", "corrosion": 0, "condition": "optimal"})
+    );
+    for k in ["legs", "arms", "sensors", "core"] {
+        assert!(parts[k].is_object(), "falta {k}");
+    }
+}

@@ -45,6 +45,10 @@ impl Dir {
 pub enum Event {
     PlayerMoved,
     FloorDescended,
+    PlayerStuck,
+    PartDegraded,
+    PartBlocked,
+    GameOver,
 }
 
 impl Event {
@@ -53,6 +57,10 @@ impl Event {
         match self {
             Event::PlayerMoved => "player_moved",
             Event::FloorDescended => "floor_descended",
+            Event::PlayerStuck => "player_stuck",
+            Event::PartDegraded => "part_degraded",
+            Event::PartBlocked => "part_blocked",
+            Event::GameOver => "game_over",
         }
     }
 }

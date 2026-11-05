@@ -1,6 +1,12 @@
 // Convierte el estado de una partida en el JSON del contrato común.
+use crate::logic::corrosion::Part;
 use crate::logic::{Event, GameState};
 use serde_json::{json, Value};
+
+/// Pieza del robot tal como la ve el cliente.
+fn part_json(p: &Part) -> Value {
+    json!({"name": p.model.id(), "corrosion": p.corrosion, "condition": p.condition().id()})
+}
 
 /// Construye la respuesta; las casillas nunca vistas salen como "unknown".
 pub fn present(id: &str, s: &GameState, events: &[Event]) -> Value {
@@ -38,6 +44,12 @@ pub fn present(id: &str, s: &GameState, events: &[Event]) -> Value {
             "events": event_ids,
             "allowedActions": s.allowed_actions(),
             "score": s.score,
+            "parts": {
+                "legs": part_json(&s.body.legs),
+                "arms": part_json(&s.body.arms),
+                "sensors": part_json(&s.body.sensors),
+                "core": part_json(&s.body.core),
+            },
         }
     })
 }

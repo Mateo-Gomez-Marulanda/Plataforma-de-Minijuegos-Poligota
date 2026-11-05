@@ -1,4 +1,5 @@
 // Estado completo de una partida: piso, mapa, visión, puntaje y registro.
+use super::corrosion::Body;
 use super::map::zones::Zone;
 use super::map::{Map, Pos, Tile};
 use rand::rngs::StdRng;
@@ -36,6 +37,7 @@ pub struct GameState {
     pub status: Status,
     pub log: Vec<String>,
     pub score: u32,
+    pub body: Body,
     pub rng: StdRng,
 }
 
