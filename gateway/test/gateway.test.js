@@ -119,3 +119,10 @@ test('buildRoutes: /api/blackjack apunta a blackjack-service:8006', () => {
   assert.deepEqual(ruta(buildRoutes({})), { prefix: '/api/blackjack', target: 'http://blackjack-service:8006', rewrite: '' });
   assert.equal(ruta(buildRoutes({ BLACKJACK_URL: 'http://localhost:9' })).target, 'http://localhost:9');
 });
+
+// Los juegos WebSocket también exponen /api/<juego> para comprobar su salud y despertarlos por HTTP.
+test('buildRoutes: /api/snake apunta a snake-service:8003', () => {
+  const ruta = (r) => r.find((x) => x.prefix === '/api/snake');
+  assert.deepEqual(ruta(buildRoutes({})), { prefix: '/api/snake', target: 'http://snake-service:8003', rewrite: '' });
+  assert.equal(ruta(buildRoutes({ SNAKE_URL: 'http://localhost:9' })).target, 'http://localhost:9');
+});

@@ -1,8 +1,10 @@
 // Pantalla de minijuegos: lista los seis juegos con su lenguaje.
 // Los que ya tienen pantalla son enlaces; el resto muestra "Disponible pronto".
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Pagina from '../components/Pagina.jsx';
 import { JUEGOS } from '../config.js';
+import { despertarServicio, despertarTodos } from '../api/despertar.js';
 
 // Contenido común de la ficha de un juego.
 function Ficha({ j, estado }) {
@@ -16,11 +18,16 @@ function Ficha({ j, estado }) {
 }
 
 export default function Juegos() {
+  // Despierta los servicios en segundo plano para que al hacer clic ya estén listos.
+  useEffect(() => {
+    despertarTodos();
+  }, []);
+
   return (
     <Pagina titulo="Minijuegos">
       <ul className="lista-juegos">
         {JUEGOS.map((j) => (
-          <li key={j.id}>
+          <li key={j.id} onMouseEnter={() => despertarServicio(j.id)}>
             {j.ruta ? (
               <Link to={j.ruta} className={`juego juego--${j.color} juego--activo`}>
                 <Ficha j={j} estado="Jugar" />

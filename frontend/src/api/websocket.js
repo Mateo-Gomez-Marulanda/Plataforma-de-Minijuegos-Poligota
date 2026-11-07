@@ -1,6 +1,7 @@
 // Cliente WebSocket genérico para los juegos en tiempo real (contrato de la sección 4.2 del diseño).
 // Una conexión equivale a una partida. Solo habla con el gateway; cada juego aporta su ruta (/ws/snake, /ws/tetris...).
 import { API_URL } from './cliente.js';
+import { despertarServicio } from './despertar.js';
 
 // Dirección del WebSocket: la del gateway si se configuró, o la de la propia página (http -> ws, https -> wss).
 const urlWs = (ruta) => (API_URL || window.location.origin).replace(/^http/, 'ws') + ruta;
@@ -9,6 +10,10 @@ const urlWs = (ruta) => (API_URL || window.location.origin).replace(/^http/, 'ws
 // Callbacks: onAbrir(), onEstado(msg), onFin(data), onError(msg), onCierre().
 // Devuelve las acciones comunes: empezar, tecla (un mensaje `input`), pausar, reanudar y cerrar.
 export function abrirJuego(ruta, { onAbrir, onEstado, onFin, onError, onCierre }) {
+  // Dispara el despertar HTTP del microservicio por si estaba dormido en Render
+  const servicio = ruta.match(/^\/ws\/([a-z]+)/)?.[1];
+  if (servicio) despertarServicio(servicio);
+
   const ws = new WebSocket(urlWs(ruta));
 
   // Envía un mensaje JSON si la conexión está abierta.
