@@ -1,8 +1,14 @@
 // Define el gateway: un servidor Express que reenvía cada ruta pública al servicio
 // de juego correspondiente (HTTP y WebSocket). No contiene lógica de juego.
+import http from 'node:http';
+import https from 'node:https';
 import express from 'express';
 import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+
+// Agentes de conexión con Keep-Alive para reutilizar túneles TCP/TLS y reducir la latencia de cada jugada.
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 50 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 50 });
 
 // Construye la tabla de rutas públicas -> servicios internos (sección 2.3 del diseño).
 // Los destinos se pueden sobrescribir con variables de entorno.
@@ -37,8 +43,10 @@ export function createGateway(routes = buildRoutes()) {
 
   const wsProxies = [];
   for (const r of routes) {
+    const isHttps = typeof r.target === 'string' && r.target.startsWith('https:');
     const proxy = createProxyMiddleware({
       target: r.target,
+      agent: isHttps ? httpsAgent : httpAgent,
       changeOrigin: true,
       ws: !!r.ws,
       pathFilter: (path) => path === r.prefix || path.startsWith(r.prefix + '/') || path.startsWith(r.prefix + '?'),
