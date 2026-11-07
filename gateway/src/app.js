@@ -41,6 +41,22 @@ export function createGateway(routes = buildRoutes()) {
   app.use(cors());
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+  // Proporciona al frontend las URLs directas de WebSocket si son públicas, evitando el doble salto.
+  app.get('/api/config', (_req, res) => {
+    const isPublic = (url) => typeof url === 'string' && url.startsWith('https://');
+    const directWs = (prefix) => {
+      const match = routes.find((r) => r.prefix === prefix);
+      return isPublic(match?.target) ? match.target.replace(/^http/, 'ws') + '/ws' : null;
+    };
+    res.json({
+      ws: {
+        snake: directWs('/ws/snake'),
+        tetris: directWs('/ws/tetris'),
+        asteroids: directWs('/ws/asteroids'),
+      },
+    });
+  });
+
   const wsProxies = [];
   for (const r of routes) {
     const isHttps = typeof r.target === 'string' && r.target.startsWith('https:');

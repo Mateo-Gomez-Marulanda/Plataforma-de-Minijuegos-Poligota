@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Pagina from '../components/Pagina.jsx';
 import { JUEGOS } from '../config.js';
 import { despertarServicio, despertarTodos } from '../api/despertar.js';
+import { cargarConfigWs } from '../api/websocket.js';
 
 // Contenido común de la ficha de un juego.
 function Ficha({ j, estado }) {
@@ -18,9 +19,10 @@ function Ficha({ j, estado }) {
 }
 
 export default function Juegos() {
-  // Despierta los servicios en segundo plano para que al hacer clic ya estén listos.
+  // Despierta los servicios en segundo plano y precarga las rutas directas de WebSocket.
   useEffect(() => {
     despertarTodos();
+    cargarConfigWs();
   }, []);
 
   return (

@@ -57,6 +57,12 @@ test('health', async () => {
   assert.deepEqual(await (await fetch(url('/health'))).json(), { status: 'ok' });
 });
 
+// GET /api/config devuelve la configuración de endpoints directos.
+test('api/config responde con objeto ws', async () => {
+  const data = await (await fetch(url('/api/config'))).json();
+  assert.ok(data.ws);
+});
+
 // El prefijo /api/... se elimina y se conservan método y cuerpo.
 test('REST: quita el prefijo y reenvía método y cuerpo', async () => {
   const r = await fetch(url('/api/sudoku/games/abc/move'), { method: 'POST', body: '{"x":1}' });
